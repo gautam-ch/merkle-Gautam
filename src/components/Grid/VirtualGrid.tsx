@@ -356,9 +356,23 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         return;
       }
 
-      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      const activeEl = document.activeElement;
+      const activeTag = (activeEl?.tagName || '').toLowerCase();
+
+      // 1. If focus is inside a form input/textarea/select, never hijack any key
       if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
         return;
+      }
+
+      // 2. If focus is on an interactive element (button, link, custom role), Enter & Space belong to it!
+      const isInteractive =
+        activeTag === 'button' ||
+        activeTag === 'a' ||
+        activeEl?.getAttribute('role') === 'button' ||
+        activeEl?.getAttribute('contenteditable') === 'true';
+
+      if (isInteractive && (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar')) {
+        return; // Allow native button/link activation without opening row details!
       }
 
       if (
@@ -375,6 +389,11 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
           'Enter',
         ].includes(e.key)
       ) {
+        // If focus is on an external interactive element, don't hijack arrow keys either
+        if (isInteractive && !containerRef.current?.contains(activeEl)) {
+          return;
+        }
+
         handleKeyDownRef.current(e as unknown as React.KeyboardEvent);
       }
     };
