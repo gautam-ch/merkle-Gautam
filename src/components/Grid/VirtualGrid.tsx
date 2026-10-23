@@ -209,6 +209,36 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         e.preventDefault();
         colIndex = Math.max(0, colIndex - 1);
         break;
+      case 'PageDown': {
+        e.preventDefault();
+        const pageSize = Math.max(1, Math.floor(viewportHeight / ROW_HEIGHT) - 2);
+        rowIndex = Math.min(maxRow, rowIndex + pageSize);
+        break;
+      }
+      case 'PageUp': {
+        e.preventDefault();
+        const pageSize = Math.max(1, Math.floor(viewportHeight / ROW_HEIGHT) - 2);
+        rowIndex = Math.max(0, rowIndex - pageSize);
+        break;
+      }
+      case 'Home':
+        e.preventDefault();
+        if (e.ctrlKey) {
+          rowIndex = 0;
+          colIndex = 1;
+        } else {
+          colIndex = 1;
+        }
+        break;
+      case 'End':
+        e.preventDefault();
+        if (e.ctrlKey) {
+          rowIndex = maxRow;
+          colIndex = maxCol;
+        } else {
+          colIndex = maxCol;
+        }
+        break;
       case ' ':
         e.preventDefault();
         if (orders[rowIndex]) {
@@ -227,13 +257,41 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
     setFocusedCell({ rowIndex, colIndex });
 
-    const targetTop = rowIndex * ROW_HEIGHT;
     const container = containerRef.current;
     if (container) {
-      if (targetTop < container.scrollTop + 80) {
-        container.scrollTop = Math.max(0, targetTop - 80);
-      } else if (targetTop + ROW_HEIGHT > container.scrollTop + viewportHeight) {
-        container.scrollTop = targetTop - viewportHeight + ROW_HEIGHT + 40;
+      // 1. Vertical Auto-Scroll
+      const targetTop = rowIndex * ROW_HEIGHT;
+      if (targetTop < container.scrollTop + 50) {
+        container.scrollTop = Math.max(0, targetTop - 50);
+      } else if (targetTop + ROW_HEIGHT > container.scrollTop + viewportHeight - 20) {
+        container.scrollTop = targetTop + ROW_HEIGHT - viewportHeight + 40;
+      }
+
+      // 2. Horizontal Auto-Scroll (Keeps focused column in view)
+      const selectWidth = columnWidths.select ?? 48;
+      let targetLeft = 0;
+      let cellWidth = selectWidth;
+
+      if (colIndex === 0) {
+        targetLeft = 0;
+        cellWidth = selectWidth;
+      } else {
+        const precedingWidth = columns
+          .slice(0, colIndex - 1)
+          .reduce((sum, col) => sum + col.width, 0);
+        targetLeft = selectWidth + precedingWidth;
+        cellWidth = columns[colIndex - 1]?.width ?? 140;
+      }
+
+      const targetRight = targetLeft + cellWidth;
+      const visibleLeft = container.scrollLeft;
+      const visibleRight = container.scrollLeft + container.clientWidth;
+      const pinnedMargin = pinnedColumn ? selectWidth + 150 : selectWidth;
+
+      if (targetLeft < visibleLeft + pinnedMargin) {
+        container.scrollLeft = Math.max(0, targetLeft - pinnedMargin);
+      } else if (targetRight > visibleRight) {
+        container.scrollLeft = targetRight - container.clientWidth + 30;
       }
     }
   };
@@ -445,7 +503,11 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                     role="row"
                     aria-rowindex={actualIndex + 2}
                     aria-selected={isSelected}
-                    onClick={(e) => toggleRowSelection(order.id, actualIndex, e.shiftKey)}
+                    onClick={(e) => {
+                      toggleRowSelection(order.id, actualIndex, e.shiftKey);
+                      setFocusedCell((prev) => ({ ...prev, rowIndex: actualIndex }));
+                      containerRef.current?.focus();
+                    }}
                     onDoubleClick={() => setActiveDetailOrder(order)}
                     className={`flex items-center border-b border-slate-200 text-xs transition-colors cursor-pointer ${
                       isSelected
@@ -461,6 +523,12 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                       role="gridcell"
                       aria-colindex={1}
                       tabIndex={isRowFocused && focusedCell.colIndex === 0 ? 0 : -1}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRowSelection(order.id, actualIndex, e.shiftKey);
+                        setFocusedCell({ rowIndex: actualIndex, colIndex: 0 });
+                        containerRef.current?.focus();
+                      }}
                       className={`shrink-0 flex items-center justify-center border-r border-slate-200 px-3 h-full ${
                         isRowFocused && focusedCell.colIndex === 0
                           ? 'ring-2 ring-blue-600 ring-inset z-10'
@@ -487,14 +555,21 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           role="gridcell"
                           aria-colindex={cIndex + 2}
                           tabIndex={isCellFocused ? 0 : -1}
-                          className={`shrink-0 flex items-center px-3 h-full border-r border-slate-200 truncate ${
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFocusedCell({ rowIndex: actualIndex, colIndex: cIndex + 1 });
+                            containerRef.current?.focus();
+                          }}
+                          className={`shrink-0 flex items-center px-3 h-full border-r border-slate-200 truncate cursor-pointer transition-colors ${
                             col.align === 'right' ? 'justify-end font-mono' : 'justify-start'
                           } ${
                             isPinned
                               ? 'sticky left-12 z-10 bg-inherit shadow-md border-r-2 border-r-slate-300 backdrop-blur-sm'
                               : ''
                           } ${
-                            isCellFocused ? 'ring-2 ring-blue-600 ring-inset z-10' : ''
+                            isCellFocused
+                              ? 'ring-2 ring-blue-600 ring-inset bg-blue-50/80 text-blue-950 font-semibold z-20'
+                              : ''
                           }`}
                           style={{ width: col.width }}
                         >
