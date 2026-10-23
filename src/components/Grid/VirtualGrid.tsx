@@ -19,7 +19,7 @@ const OVERSCAN = 5;
 
 const ALL_COLUMNS: Omit<GridColumn, 'width'>[] = [
   { id: 'id', header: 'Order ID', align: 'center', sortable: true, type: 'string' },
-  { id: 'customerName', header: 'Customer Name', align: 'center', sortable: true, type: 'string' },
+  { id: 'customerName', header: 'Customer', align: 'center', sortable: true, type: 'string' },
   { id: 'customerEmail', header: 'Customer Email', align: 'center', sortable: true, type: 'string' },
   { id: 'status', header: 'Status', align: 'center', sortable: true, type: 'badge' },
   { id: 'amount', header: 'Amount', align: 'center', sortable: true, type: 'number' },
@@ -68,10 +68,10 @@ const COLUMN_ENUM_OPTIONS: Partial<Record<keyof NormalizedOrder, { label: string
   ],
   priority: [
     { label: 'All Priorities', value: '' },
-    { label: 'High', value: 'High' },
-    { label: 'Medium', value: 'Medium' },
-    { label: 'Low', value: 'Low' },
-    { label: 'None', value: 'None' },
+    { label: '1 (Highest)', value: '1' },
+    { label: '2', value: '2' },
+    { label: '3 (Lowest)', value: '3' },
+    { label: 'None', value: 'none' },
   ],
 };
 
@@ -337,6 +337,43 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       }
     }
   };
+
+  // Stable ref for window keydown delegation
+  const handleKeyDownRef = useRef(handleKeyDown);
+  handleKeyDownRef.current = handleKeyDown;
+
+  useEffect(() => {
+    // 1. Auto-focus grid on mount so arrow navigation works immediately without clicking
+    containerRef.current?.focus();
+
+    // 2. Window-level keyboard listener (operates globally unless focused in an input/select)
+    const onWindowKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
+        return;
+      }
+
+      if (
+        [
+          'ArrowUp',
+          'ArrowDown',
+          'ArrowLeft',
+          'ArrowRight',
+          'PageUp',
+          'PageDown',
+          'Home',
+          'End',
+          ' ',
+          'Enter',
+        ].includes(e.key)
+      ) {
+        handleKeyDownRef.current(e as unknown as React.KeyboardEvent);
+      }
+    };
+
+    window.addEventListener('keydown', onWindowKeyDown);
+    return () => window.removeEventListener('keydown', onWindowKeyDown);
+  }, []);
 
   const handleResizePointerDown = (colId: string, e: React.PointerEvent) => {
     e.stopPropagation();
@@ -686,16 +723,16 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           {col.id === 'priority' && (
                             <span
                               className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-semibold border text-center ${
-                                order.priorityLabel === 'High'
+                                order.priority === 1
                                   ? 'bg-red-50 text-red-700 border-red-200'
-                                  : order.priorityLabel === 'Medium'
+                                  : order.priority === 2
                                   ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                  : order.priorityLabel === 'Low'
+                                  : order.priority === 3
                                   ? 'bg-blue-50 text-blue-700 border-blue-200'
                                   : 'bg-slate-100 text-slate-400 border-slate-200'
                               }`}
                             >
-                              {order.priorityLabel}
+                              {order.priority !== null ? order.priority : 'None'}
                             </span>
                           )}
 

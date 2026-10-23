@@ -64,10 +64,15 @@ export const App: React.FC = () => {
     syncToUrl({ filter: updated });
   };
 
-  const handleResetAllFilters = () => {
+  const handleResetAll = () => {
     setColumnFilters({});
-    syncToUrl({ filter: { groups: [] } });
+    syncToUrl({
+      filter: { groups: [] },
+      sort: { field: null, direction: null },
+      pinnedColumn: null,
+    });
   };
+  const handleResetAllFilters = handleResetAll;
 
   const processedOrders = useMemo(() => {
     let result = orders;
@@ -86,7 +91,8 @@ export const App: React.FC = () => {
           if (!filterVal) return true;
 
           if (key === 'priority') {
-            return order.priorityLabel.toLowerCase() === filterVal;
+            if (filterVal === 'none') return order.priority === null;
+            return String(order.priority) === filterVal;
           }
           if (key === 'status' || key === 'channel' || key === 'region' || key === 'paymentMethod') {
             const val = String((order as unknown as Record<string, unknown>)[key] ?? '').toLowerCase();
@@ -169,6 +175,8 @@ export const App: React.FC = () => {
     0
   );
   const totalActiveFilters = activeBuilderConditions + Object.keys(columnFilters).length;
+  const hasActiveViewMods =
+    totalActiveFilters > 0 || urlState.sort.field !== null || urlState.pinnedColumn !== null;
 
   return (
     <div className="flex h-screen w-screen flex-col bg-white text-slate-800 overflow-hidden font-sans select-none">
@@ -214,13 +222,14 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {totalActiveFilters > 0 && (
+          {hasActiveViewMods && (
             <button
-              onClick={handleResetAllFilters}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs transition"
+              onClick={handleResetAll}
+              title="Reset all filters, sorting, and pinned column"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs transition cursor-pointer"
             >
               <FilterX className="h-3.5 w-3.5" />
-              Reset Filters
+              Reset View
             </button>
           )}
 
@@ -290,7 +299,7 @@ export const App: React.FC = () => {
           <FilterChips
             filterState={urlState.filter}
             onRemoveCondition={handleRemoveCondition}
-            onClearAll={handleResetAllFilters}
+            onClearAll={handleResetAll}
           />
 
           <VirtualGrid
@@ -303,7 +312,7 @@ export const App: React.FC = () => {
             onSelectionChange={handleSelectionChange}
             columnFilters={columnFilters}
             onColumnFilterChange={handleColumnFilterChange}
-            onResetFilters={handleResetAllFilters}
+            onResetFilters={handleResetAll}
           />
         </main>
       </div>
