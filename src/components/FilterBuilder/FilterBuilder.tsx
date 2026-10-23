@@ -132,17 +132,17 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
 
   return (
     <div className="flex flex-col h-full w-full overflow-y-auto space-y-4 pr-1 text-slate-800">
-      {/* Top Header matching Wireframe: Filter Grid + add condition */}
+      {/* Sidebar Header: Clean title "Filters" + single clean "Add Condition" */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-        <h2 className="text-base font-serif font-bold tracking-tight text-slate-900">
-          Filter Grid
+        <h2 className="text-sm font-semibold tracking-tight text-slate-900">
+          Filters
         </h2>
         <button
           onClick={() => handleAddCondition()}
           className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 transition"
         >
           <Plus className="h-3.5 w-3.5" />
-          +add condition
+          Add Condition
         </button>
       </div>
 
@@ -150,14 +150,14 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
       {filterState.groups.length === 0 ||
       (filterState.groups.length === 1 && filterState.groups[0].conditions.length === 0) ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-6 text-center text-xs text-slate-500 shadow-xs">
-          No active conditions. Click <strong className="text-slate-800">+add condition</strong> to build custom filter logic.
+          No active conditions. Click <strong className="text-slate-800">Add Condition</strong> to build custom filter logic.
         </div>
       ) : (
         <div className="space-y-4">
           {filterState.groups.map((group, gIndex) => (
             <div
               key={group.id}
-              className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-3 shadow-xs"
+              className="rounded-xl border border-slate-200 bg-white p-3 space-y-3 shadow-xs"
             >
               {/* Group Header */}
               <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
@@ -193,11 +193,22 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                   return (
                     <div
                       key={condition.id}
-                      className="rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 space-y-2"
+                      className="rounded-lg border border-slate-200 bg-slate-50/70 p-2.5 space-y-2 shadow-2xs"
                     >
-                      {/* Field & Operator Row */}
-                      <div className="flex items-center gap-2">
-                        {/* Field Selector */}
+                      {/* Rule Card Top Row: Label + Remove Button */}
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                        <span>Rule</span>
+                        <button
+                          onClick={() => handleRemoveCondition(group.id, condition.id)}
+                          className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-red-600 transition"
+                          title="Remove condition"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Dropdown Grid: 2 columns, perfectly balanced, min-w-0 */}
+                      <div className="grid grid-cols-2 gap-2">
                         <select
                           value={condition.field}
                           onChange={(e) =>
@@ -205,7 +216,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                               field: e.target.value as keyof NormalizedOrder,
                             })
                           }
-                          className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500 truncate"
                         >
                           {FIELD_CONFIGS.map((f) => (
                             <option key={f.id} value={f.id}>
@@ -214,7 +225,6 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                           ))}
                         </select>
 
-                        {/* Operator Selector */}
                         <select
                           value={condition.operator}
                           onChange={(e) =>
@@ -222,7 +232,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                               operator: e.target.value as FilterOperator,
                             })
                           }
-                          className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500 truncate"
                         >
                           {fieldConfig?.operators.map((op) => (
                             <option key={op.value} value={op.value}>
@@ -230,15 +240,6 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                             </option>
                           ))}
                         </select>
-
-                        {/* Remove Condition */}
-                        <button
-                          onClick={() => handleRemoveCondition(group.id, condition.id)}
-                          className="p-1 text-slate-400 hover:text-red-500 transition"
-                          title="Remove condition"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
                       </div>
 
                       {/* Value Input */}
@@ -267,13 +268,13 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
         </div>
       )}
 
-      {/* Add Group Button matching Wireframe */}
+      {/* Add Group Button */}
       <button
         onClick={handleAddGroup}
         className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white p-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 transition"
       >
         <FolderPlus className="h-3.5 w-3.5" />
-        + Add Group
+        Add Group
       </button>
     </div>
   );
@@ -344,7 +345,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
           placeholder="Min"
           value={range[0]}
           onChange={(e) => onChange([Number(e.target.value) || 0, range[1]])}
-          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         <span className="text-xs text-slate-400">to</span>
         <input
@@ -352,7 +353,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
           placeholder="Max"
           value={range[1]}
           onChange={(e) => onChange([range[0], Number(e.target.value) || 0])}
-          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
     );
@@ -371,14 +372,14 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
           type="date"
           value={range[0]}
           onChange={(e) => onChange([e.target.value, range[1]])}
-          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
         <span className="text-xs text-slate-400">to</span>
         <input
           type="date"
           value={range[1]}
           onChange={(e) => onChange([range[0], e.target.value])}
-          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
     );
@@ -391,7 +392,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
         type="date"
         value={String(value ?? '')}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     );
   }
@@ -404,7 +405,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
         placeholder="Value..."
         value={String(value ?? '')}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     );
   }
@@ -416,7 +417,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
       placeholder="Value..."
       value={String(value ?? '')}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+      className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
     />
   );
 };

@@ -238,8 +238,8 @@ export const App: React.FC = () => {
 
       {/* Main Workspace matching Wireframe */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar: Filter Grid (matching wireframe light gray tone) */}
-        <aside className="w-80 border-r border-slate-200 bg-slate-100/90 p-4 flex flex-col gap-3 overflow-hidden">
+        {/* Left Sidebar: Filters */}
+        <aside className="w-[340px] shrink-0 border-r border-slate-200 bg-slate-100/90 p-4 flex flex-col gap-3 overflow-hidden">
           <FilterBuilder filterState={urlState.filter} onChange={handleFilterChange} />
         </aside>
 

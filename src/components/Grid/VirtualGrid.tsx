@@ -2,9 +2,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  Check,
   CheckSquare,
-  Columns3,
   Pin,
   PinOff,
   Search,
@@ -82,12 +80,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     notes: 250,
   });
 
-  // Column visibility state: ALL visible by default
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
-    () => new Set(ALL_COLUMNS.map((c) => c.id))
-  );
-  const [showColumnPicker, setShowColumnPicker] = useState(false);
-
   // Roving tabindex cell focus
   const [focusedCell, setFocusedCell] = useState<CellPosition>({
     rowIndex: 0,
@@ -119,13 +111,13 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Compute active columns based on visibility
+  // Compute columns
   const columns: GridColumn[] = useMemo(() => {
-    return ALL_COLUMNS.filter((col) => visibleColumns.has(col.id)).map((col) => ({
+    return ALL_COLUMNS.map((col) => ({
       ...col,
       width: columnWidths[col.id] ?? 140,
     }));
-  }, [visibleColumns, columnWidths]);
+  }, [columnWidths]);
 
   const totalGridWidth = useMemo(() => {
     return (columnWidths.select ?? 48) + columns.reduce((acc, col) => acc + col.width, 0);
@@ -284,75 +276,10 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
   };
 
-  const toggleColumnVisibility = (colId: string) => {
-    setVisibleColumns((prev) => {
-      const next = new Set(prev);
-      if (next.has(colId)) {
-        if (next.size > 1) {
-          next.delete(colId);
-        }
-      } else {
-        next.add(colId);
-      }
-      return next;
-    });
-  };
-
   const isAllSelected = orders.length > 0 && selectedIds.size === orders.length;
 
   return (
     <div className="relative flex flex-1 flex-col h-full w-full overflow-hidden bg-white text-slate-800 select-none">
-      {/* Subheader Toolbar: Column Customizer & Stats */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-4 py-1.5 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-700">Data Grid</span>
-          <span className="text-[11px] text-slate-400">
-            ({columns.length} columns displayed)
-          </span>
-        </div>
-
-        {/* Column Visibility Menu Button */}
-        <div className="relative">
-          <button
-            onClick={() => setShowColumnPicker((v) => !v)}
-            className="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition"
-          >
-            <Columns3 className="h-3.5 w-3.5 text-slate-500" />
-            Columns ({columns.length}/{ALL_COLUMNS.length})
-          </button>
-
-          {showColumnPicker && (
-            <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-1 px-1 text-[11px] font-bold uppercase text-slate-500">
-                <span>Toggle Columns</span>
-                <button
-                  onClick={() => setVisibleColumns(new Set(ALL_COLUMNS.map((c) => c.id)))}
-                  className="text-blue-600 hover:underline capitalize font-semibold"
-                >
-                  Show all
-                </button>
-              </div>
-
-              <div className="max-h-60 overflow-y-auto space-y-0.5">
-                {ALL_COLUMNS.map((col) => {
-                  const isVisible = visibleColumns.has(col.id);
-                  return (
-                    <button
-                      key={col.id}
-                      onClick={() => toggleColumnVisibility(col.id)}
-                      className="flex w-full items-center justify-between rounded px-2 py-1 text-xs text-left text-slate-700 hover:bg-slate-100 transition"
-                    >
-                      <span className="truncate">{col.header}</span>
-                      {isVisible && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Scrollable Grid Container */}
       <div
         ref={containerRef}
