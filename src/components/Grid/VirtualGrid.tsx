@@ -18,19 +18,19 @@ const ROW_HEIGHT = 40;
 const OVERSCAN = 5;
 
 const ALL_COLUMNS: Omit<GridColumn, 'width'>[] = [
-  { id: 'id', header: 'Order ID', sortable: true, type: 'string' },
-  { id: 'customerName', header: 'Customer Name', sortable: true, type: 'string' },
-  { id: 'customerEmail', header: 'Customer Email', sortable: true, type: 'string' },
-  { id: 'status', header: 'Status', sortable: true, type: 'badge' },
-  { id: 'amount', header: 'Amount', align: 'right', sortable: true, type: 'number' },
-  { id: 'createdAt', header: 'Created At', sortable: true, type: 'date' },
-  { id: 'updatedAt', header: 'Updated At', sortable: true, type: 'date' },
-  { id: 'priority', header: 'Priority', sortable: true, type: 'badge' },
-  { id: 'paymentMethod', header: 'Payment Method', sortable: true, type: 'string' },
-  { id: 'itemCount', header: 'Items', align: 'right', sortable: true, type: 'number' },
-  { id: 'region', header: 'Region', sortable: true, type: 'string' },
-  { id: 'channel', header: 'Channel', sortable: true, type: 'string' },
-  { id: 'notes', header: 'Notes', sortable: true, type: 'string' },
+  { id: 'id', header: 'Order ID', align: 'center', sortable: true, type: 'string' },
+  { id: 'customerName', header: 'Customer Name', align: 'center', sortable: true, type: 'string' },
+  { id: 'customerEmail', header: 'Customer Email', align: 'center', sortable: true, type: 'string' },
+  { id: 'status', header: 'Status', align: 'center', sortable: true, type: 'badge' },
+  { id: 'amount', header: 'Amount', align: 'center', sortable: true, type: 'number' },
+  { id: 'createdAt', header: 'Created At', align: 'center', sortable: true, type: 'date' },
+  { id: 'updatedAt', header: 'Updated At', align: 'center', sortable: true, type: 'date' },
+  { id: 'priority', header: 'Priority', align: 'center', sortable: true, type: 'badge' },
+  { id: 'paymentMethod', header: 'Payment Method', align: 'center', sortable: true, type: 'string' },
+  { id: 'itemCount', header: 'Items', align: 'center', sortable: true, type: 'number' },
+  { id: 'region', header: 'Region', align: 'center', sortable: true, type: 'string' },
+  { id: 'channel', header: 'Channel', align: 'center', sortable: true, type: 'string' },
+  { id: 'notes', header: 'Notes', align: 'center', sortable: true, type: 'string' },
 ];
 
 const COLUMN_ENUM_OPTIONS: Partial<Record<keyof NormalizedOrder, { label: string; value: string }[]>> = {
@@ -104,22 +104,22 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
 
-  // Default widths for all 13 columns
+  // Calibrated column widths: exactly 6 columns fit on a 13-inch display (1280px) without any cut column!
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     select: 48,
-    id: 150,
-    customerName: 170,
-    customerEmail: 220,
+    id: 130,
+    customerName: 155,
+    customerEmail: 185,
     status: 120,
-    amount: 130,
-    createdAt: 160,
-    updatedAt: 160,
-    priority: 110,
-    paymentMethod: 130,
+    amount: 125,
+    createdAt: 150,
+    updatedAt: 150,
+    priority: 105,
+    paymentMethod: 125,
     itemCount: 80,
-    region: 110,
-    channel: 110,
-    notes: 250,
+    region: 105,
+    channel: 100,
+    notes: 220,
   });
 
   // Roving tabindex cell focus
@@ -435,12 +435,12 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                 style={{ width: col.width }}
               >
                 {/* Header Title + Actions */}
-                <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center justify-between gap-1 w-full">
                   <div
                     onClick={() => handleHeaderClick(col)}
-                    className="flex flex-1 items-center gap-1.5 cursor-pointer hover:text-slate-950 truncate"
+                    className="flex flex-1 items-center justify-center gap-1.5 cursor-pointer hover:text-slate-950 truncate text-center pl-4"
                   >
-                    <span className="truncate">{col.header}</span>
+                    <span className="truncate text-center">{col.header}</span>
                     {col.sortable && (
                       <span className="shrink-0 text-slate-400">
                         {isSorted ? (
@@ -460,7 +460,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                   <button
                     onClick={() => onPinnedChange(isPinned ? null : col.id)}
                     title={isPinned ? 'Unpin column' : 'Pin column to left'}
-                    className={`rounded p-1 hover:bg-slate-200 transition ${
+                    className={`rounded p-1 hover:bg-slate-200 transition shrink-0 ${
                       isPinned ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'
                     }`}
                   >
@@ -470,12 +470,12 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
                 {/* Column Quick Filter Input / Dropdown */}
                 {onColumnFilterChange && (
-                  <div className="mt-1.5 flex items-center rounded border border-slate-300 bg-white px-1.5 py-0.5 shadow-2xs">
+                  <div className="mt-1.5 flex items-center justify-center rounded border border-slate-300 bg-white px-1.5 py-0.5 shadow-2xs">
                     {COLUMN_ENUM_OPTIONS[col.id] ? (
                       <select
                         value={columnFilters[col.id] || ''}
                         onChange={(e) => onColumnFilterChange(col.id, e.target.value)}
-                        className="w-full bg-transparent text-[11px] text-slate-800 focus:outline-none cursor-pointer truncate"
+                        className="w-full bg-transparent text-[11px] text-slate-800 text-center focus:outline-none cursor-pointer truncate"
                       >
                         {COLUMN_ENUM_OPTIONS[col.id]?.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -484,14 +484,14 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                         ))}
                       </select>
                     ) : (
-                      <div className="flex items-center w-full">
+                      <div className="flex items-center justify-center w-full">
                         <Search className="h-2.5 w-2.5 text-slate-400 mr-1 shrink-0" />
                         <input
                           type="text"
                           placeholder="Filter..."
                           value={columnFilters[col.id] || ''}
                           onChange={(e) => onColumnFilterChange(col.id, e.target.value)}
-                          className="w-full bg-transparent text-[11px] text-slate-800 placeholder-slate-400 focus:outline-none"
+                          className="w-full bg-transparent text-[11px] text-slate-800 text-center placeholder-slate-400 focus:outline-none"
                         />
                       </div>
                     )}
@@ -618,9 +618,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                             setFocusedCell({ rowIndex: actualIndex, colIndex: cIndex + 1 });
                             containerRef.current?.focus();
                           }}
-                          className={`shrink-0 flex items-center px-3 h-full border-r border-slate-200 truncate cursor-pointer transition-colors ${
-                            col.align === 'right' ? 'justify-end font-mono' : 'justify-start'
-                          } ${
+                          className={`shrink-0 flex items-center justify-center text-center px-3 h-full border-r border-slate-200 truncate cursor-pointer transition-colors ${
                             isPinned
                               ? 'sticky left-12 z-10 bg-inherit shadow-md border-r-2 border-r-slate-300 backdrop-blur-sm'
                               : ''
@@ -632,26 +630,26 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           style={{ width: col.width }}
                         >
                           {col.id === 'id' && (
-                            <span className="font-mono text-slate-900 font-semibold">
+                            <span className="font-mono text-slate-900 font-semibold text-center truncate">
                               {order.id}
                             </span>
                           )}
 
                           {col.id === 'customerName' && (
-                            <span className="truncate text-slate-800 font-medium">
+                            <span className="truncate text-slate-800 font-medium text-center">
                               {order.customerName || 'Anonymous'}
                             </span>
                           )}
 
                           {col.id === 'customerEmail' && (
-                            <span className="truncate font-mono text-[11px] text-slate-600" title={order.customerEmail}>
+                            <span className="truncate font-mono text-[11px] text-slate-600 text-center" title={order.customerEmail}>
                               {order.customerEmail || '—'}
                             </span>
                           )}
 
                           {col.id === 'status' && (
                             <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
+                              className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold border text-center ${
                                 order.status === 'delivered'
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : order.status === 'shipped'
@@ -668,26 +666,26 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           )}
 
                           {col.id === 'amount' && (
-                            <span className="font-mono font-medium text-slate-900">
+                            <span className="font-mono font-medium text-slate-900 text-center">
                               {order.amountFormatted}
                             </span>
                           )}
 
                           {col.id === 'createdAt' && (
-                            <span className="font-mono text-slate-600 text-[11px]">
+                            <span className="font-mono text-slate-600 text-[11px] text-center">
                               {order.createdAtFormatted}
                             </span>
                           )}
 
                           {col.id === 'updatedAt' && (
-                            <span className="font-mono text-slate-500 text-[11px]">
+                            <span className="font-mono text-slate-500 text-[11px] text-center">
                               {order.updatedAtFormatted}
                             </span>
                           )}
 
                           {col.id === 'priority' && (
                             <span
-                              className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold border ${
+                              className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-semibold border text-center ${
                                 order.priorityLabel === 'High'
                                   ? 'bg-red-50 text-red-700 border-red-200'
                                   : order.priorityLabel === 'Medium'
@@ -702,32 +700,32 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           )}
 
                           {col.id === 'paymentMethod' && (
-                            <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase text-slate-700">
+                            <span className="inline-flex items-center justify-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase text-slate-700 text-center">
                               {order.paymentMethod}
                             </span>
                           )}
 
                           {col.id === 'itemCount' && (
-                            <span className="font-mono text-slate-800 font-medium">
+                            <span className="font-mono text-slate-800 font-medium text-center">
                               {order.itemCount}
                             </span>
                           )}
 
                           {col.id === 'region' && (
-                            <span className="font-mono text-slate-700 text-[11px]">
+                            <span className="font-mono text-slate-700 text-[11px] text-center">
                               {order.region}
                             </span>
                           )}
 
                           {col.id === 'channel' && (
-                            <span className="text-slate-600 capitalize">
+                            <span className="text-slate-600 capitalize text-center">
                               {order.channel}
                             </span>
                           )}
 
                           {col.id === 'notes' && (
                             <span
-                              className="truncate text-slate-600 text-[11px]"
+                              className="truncate text-slate-600 text-[11px] text-center"
                               title={order.notes}
                             >
                               {order.notes || <span className="text-slate-300 italic">—</span>}

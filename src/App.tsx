@@ -4,6 +4,8 @@ import {
   Database,
   Download,
   FilterX,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Share2,
 } from 'lucide-react';
@@ -27,6 +29,7 @@ export const App: React.FC = () => {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [copiedLink, setCopiedLink] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const deferredFilterState = useDeferredValue(urlState.filter);
   const deferredColumnFilters = useDeferredValue(columnFilters);
@@ -165,6 +168,17 @@ export const App: React.FC = () => {
       {/* Top Application Bar matching Wireframe */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-xs z-40">
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsSidebarOpen((v) => !v)}
+            title={isSidebarOpen ? 'Collapse filters sidebar (more table space)' : 'Expand filters sidebar'}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition shadow-2xs cursor-pointer"
+          >
+            {isSidebarOpen ? (
+              <PanelLeftClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftOpen className="h-4 w-4" />
+            )}
+          </button>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-200">
             <Database className="h-4 w-4" />
           </div>
@@ -249,9 +263,11 @@ export const App: React.FC = () => {
       {/* Main Workspace matching Wireframe */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar: Filters */}
-        <aside className="w-[340px] shrink-0 border-r border-slate-200 bg-slate-100/90 p-4 flex flex-col gap-3 overflow-hidden">
-          <FilterBuilder filterState={urlState.filter} onChange={handleFilterChange} />
-        </aside>
+        {isSidebarOpen && (
+          <aside className="w-[320px] shrink-0 border-r border-slate-200 bg-slate-100/90 p-4 flex flex-col gap-3 overflow-hidden">
+            <FilterBuilder filterState={urlState.filter} onChange={handleFilterChange} />
+          </aside>
+        )}
 
         {/* Right Pane: DATA GRID matching wireframe title and table */}
         <main className="flex-1 flex flex-col overflow-hidden bg-white">
