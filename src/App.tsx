@@ -125,11 +125,18 @@ export const App: React.FC = () => {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const targetExportOrders = useMemo(() => {
+    if (urlState.selectedIds.size > 0) {
+      const matching = processedOrders.filter((o) => urlState.selectedIds.has(o.id));
+      return matching.length > 0 ? matching : orders.filter((o) => urlState.selectedIds.has(o.id));
+    }
+    return processedOrders;
+  }, [processedOrders, orders, urlState.selectedIds]);
+
   const handleExport = (format: 'csv' | 'json') => {
-    const res = exportOrders(processedOrders, format, 200);
-    const notice = res.truncated
-      ? `Exported top 200 rows of ${processedOrders.length.toLocaleString()} matching records as ${format.toUpperCase()}`
-      : `Exported ${res.count} rows as ${format.toUpperCase()}`;
+    const res = exportOrders(targetExportOrders, format);
+    const label = urlState.selectedIds.size > 0 ? 'selected' : 'matching';
+    const notice = `Exported ${res.count.toLocaleString()} ${label} orders as ${format.toUpperCase()}`;
     setExportNotice(notice);
     setTimeout(() => setExportNotice(null), 4000);
   };
@@ -221,8 +228,12 @@ export const App: React.FC = () => {
           <div className="flex items-center rounded-lg border border-slate-300 bg-white p-0.5 shadow-2xs">
             <button
               onClick={() => handleExport('csv')}
-              title="Export top 200 rows as CSV"
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+              title={
+                urlState.selectedIds.size > 0
+                  ? `Export ${targetExportOrders.length.toLocaleString()} selected orders as CSV`
+                  : `Export all ${processedOrders.length.toLocaleString()} filtered orders as CSV`
+              }
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
             >
               <Download className="h-3 w-3" />
               CSV
@@ -230,8 +241,12 @@ export const App: React.FC = () => {
             <div className="h-3.5 w-[1px] bg-slate-200" />
             <button
               onClick={() => handleExport('json')}
-              title="Export top 200 rows as JSON"
-              className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition"
+              title={
+                urlState.selectedIds.size > 0
+                  ? `Export ${targetExportOrders.length.toLocaleString()} selected orders as JSON`
+                  : `Export all ${processedOrders.length.toLocaleString()} filtered orders as JSON`
+              }
+              className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
             >
               <Download className="h-3 w-3" />
               JSON

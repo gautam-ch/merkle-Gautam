@@ -2,15 +2,15 @@ import type { NormalizedOrder } from '../types/order';
 
 /**
  * Exports current orders to CSV or JSON format.
- * Capped at 200 rows per assignment decision.
+ * If limit is provided, caps export at limit; otherwise exports all targets.
  */
 export function exportOrders(
   orders: NormalizedOrder[],
   format: 'csv' | 'json',
-  limit: number = 200
+  limit?: number
 ): { count: number; truncated: boolean } {
-  const exportData = orders.slice(0, limit);
-  const truncated = orders.length > limit;
+  const exportData = limit ? orders.slice(0, limit) : orders;
+  const truncated = limit ? orders.length > limit : false;
 
   if (format === 'json') {
     const jsonStr = JSON.stringify(exportData, null, 2);
