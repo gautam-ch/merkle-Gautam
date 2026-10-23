@@ -342,12 +342,20 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   const handleKeyDownRef = useRef(handleKeyDown);
   handleKeyDownRef.current = handleKeyDown;
 
+  const activeDetailOrderRef = useRef(activeDetailOrder);
+  activeDetailOrderRef.current = activeDetailOrder;
+
   useEffect(() => {
     // 1. Auto-focus grid on mount so arrow navigation works immediately without clicking
     containerRef.current?.focus();
 
     // 2. Window-level keyboard listener (operates globally unless focused in an input/select)
     const onWindowKeyDown = (e: KeyboardEvent) => {
+      // If detail sheet is open, let sheet handle escape and ignore grid nav
+      if (activeDetailOrderRef.current !== null) {
+        return;
+      }
+
       const activeTag = (document.activeElement?.tagName || '').toLowerCase();
       if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
         return;
@@ -421,7 +429,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        onKeyDown={handleKeyDown}
         tabIndex={0}
         role="grid"
         aria-rowcount={orders.length}
