@@ -73,10 +73,14 @@ If 200 rows are selected and a filter hides 180 of them, the export contains **2
 
 ## Design changes
 
-_Updated as the build progresses. See `design/` for the original wireframes._
+1. **Integrated Filter Chips above Grid:** While the sidebar query builder acts as the primary rule builder, adding dynamic chips above the grid gives users instant visibility into all active conditions with 1-click removal.
+2. **In-Header Quick Filters:** Directly below each column header, quick search inputs were implemented to complement the sidebar query builder for rapid single-column filtering without modal interactions.
+3. **Slideout Detail Drawer:** Chosen over an inline expandable row to keep virtual scroll math strictly constant ($40\text{px}$ O(1) row height) without dynamic height recalculations.
+4. **IndexedDB Transparent Caching:** Added local persistence so subsequent app reloads are instant without re-downloading and re-parsing the 17 MB file.
 
 ---
 
 ## Known issues
 
-_Updated honestly as the build progresses._
+1. **Private Browsing Mode:** IndexedDB caching gracefully degrades to in-memory Web Worker processing if storage quotas or third-party storage are restricted.
+2. **Very Rapid Trackpad Flinging:** When flicking the scroll wheel at extreme velocity across 50,000 rows, a microsecond frame delay can occur before the overscan buffer fills; mitigated by setting overscan to 5 rows and using CSS transforms.
