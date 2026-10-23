@@ -127,6 +127,10 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }));
   }, [visibleColumns, columnWidths]);
 
+  const totalGridWidth = useMemo(() => {
+    return (columnWidths.select ?? 48) + columns.reduce((acc, col) => acc + col.width, 0);
+  }, [columnWidths.select, columns]);
+
   const totalCount = orders.length;
   const totalHeight = totalCount * ROW_HEIGHT;
 
@@ -365,13 +369,13 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
           role="row"
           aria-rowindex={1}
           className="sticky top-0 z-30 flex border-b border-slate-300 bg-slate-50 shadow-xs"
-          style={{ minWidth: 'max-content' }}
+          style={{ width: totalGridWidth }}
         >
           {/* Select All Column Header */}
           <div
             role="columnheader"
             aria-colindex={1}
-            className="flex items-center justify-center border-r border-slate-200 px-3 py-2.5 bg-slate-50"
+            className="shrink-0 flex items-center justify-center border-r border-slate-200 px-3 py-2.5 bg-slate-50"
             style={{ width: columnWidths.select }}
           >
             <button
@@ -398,7 +402,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                 role="columnheader"
                 aria-colindex={cIndex + 2}
                 aria-sort={isSorted ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
-                className={`relative flex flex-col justify-between border-r border-slate-200 p-2 text-xs font-semibold text-slate-700 bg-slate-50 transition-colors ${
+                className={`shrink-0 relative flex flex-col justify-between border-r border-slate-200 p-2 text-xs font-semibold text-slate-700 bg-slate-50 transition-colors ${
                   isPinned ? 'sticky left-12 z-20 bg-slate-100 shadow-md border-r-2 border-r-slate-300' : ''
                 }`}
                 style={{ width: col.width }}
@@ -490,7 +494,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
             style={{
               height: totalHeight,
               position: 'relative',
-              minWidth: 'max-content',
+              width: totalGridWidth,
             }}
           >
             {/* Rendered Window with translateY */}
@@ -500,7 +504,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                 position: 'absolute',
                 top: 0,
                 left: 0,
-                right: 0,
+                width: totalGridWidth,
               }}
             >
               {visibleOrders.map((order, vIndex) => {
@@ -523,14 +527,14 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                         ? 'bg-white hover:bg-slate-50'
                         : 'bg-slate-50/40 hover:bg-slate-100/60'
                     }`}
-                    style={{ height: ROW_HEIGHT }}
+                    style={{ height: ROW_HEIGHT, width: totalGridWidth }}
                   >
                     {/* Checkbox Cell */}
                     <div
                       role="gridcell"
                       aria-colindex={1}
                       tabIndex={isRowFocused && focusedCell.colIndex === 0 ? 0 : -1}
-                      className={`flex items-center justify-center border-r border-slate-200 px-3 h-full ${
+                      className={`shrink-0 flex items-center justify-center border-r border-slate-200 px-3 h-full ${
                         isRowFocused && focusedCell.colIndex === 0
                           ? 'ring-2 ring-blue-600 ring-inset z-10'
                           : ''
@@ -556,7 +560,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           role="gridcell"
                           aria-colindex={cIndex + 2}
                           tabIndex={isCellFocused ? 0 : -1}
-                          className={`flex items-center px-3 h-full border-r border-slate-200 truncate ${
+                          className={`shrink-0 flex items-center px-3 h-full border-r border-slate-200 truncate ${
                             col.align === 'right' ? 'justify-end font-mono' : 'justify-start'
                           } ${
                             isPinned
