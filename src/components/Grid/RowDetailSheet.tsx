@@ -6,7 +6,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { Check, Clock, Copy, CreditCard, Hash, MapPin, Package, Shield, User } from 'lucide-react';
+import { Check, Clock, Copy, CreditCard, MapPin, User } from 'lucide-react';
 import React, { useState } from 'react';
 import type { NormalizedOrder } from '../../types/order';
 
@@ -52,9 +52,9 @@ export const RowDetailSheet: React.FC<RowDetailSheetProps> = ({
         <SheetHeader className="p-6 border-b border-neutral-800 bg-neutral-900/40">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-lg font-bold text-white tracking-tight">
+              <SheetTitle className="font-mono text-lg font-bold text-white tracking-tight">
                 {order.id}
-              </span>
+              </SheetTitle>
               <span
                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border ${getStatusColor(
                   order.status
