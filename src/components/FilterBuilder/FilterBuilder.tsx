@@ -16,7 +16,6 @@ interface FilterBuilderProps {
 }
 
 export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onChange }) => {
-  // Add a condition to a group (defaults to first group or creates one)
   const handleAddCondition = (groupId?: string) => {
     const targetGroupId = groupId ?? filterState.groups[0]?.id;
     const newCondition: FilterCondition = {
@@ -44,7 +43,6 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
     }
   };
 
-  // Add a new compound group
   const handleAddGroup = () => {
     const newGroup: FilterGroup = {
       id: `grp_${Date.now()}`,
@@ -93,7 +91,6 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
           conditions: g.conditions.map((c) => {
             if (c.id !== conditionId) return c;
 
-            // If field changed, set default operator and empty value
             if (updates.field && updates.field !== c.field) {
               const newConfig = FIELD_CONFIGS.find((f) => f.id === updates.field);
               const defaultOp = newConfig?.operators[0]?.value ?? 'contains';
@@ -134,44 +131,44 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
   };
 
   return (
-    <div className="flex flex-col h-full w-full overflow-y-auto space-y-4 pr-1">
-      {/* Top Header matching Wireframe */}
-      <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
+    <div className="flex flex-col h-full w-full overflow-y-auto space-y-4 pr-1 text-slate-800">
+      {/* Top Header matching Wireframe: Filter Grid + add condition */}
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+        <h2 className="text-base font-serif font-bold tracking-tight text-slate-900">
           Filter Grid
         </h2>
         <button
           onClick={() => handleAddCondition()}
-          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 transition"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 transition"
         >
           <Plus className="h-3.5 w-3.5" />
-          Add condition
+          +add condition
         </button>
       </div>
 
       {/* Filter Groups Container */}
       {filterState.groups.length === 0 ||
       (filterState.groups.length === 1 && filterState.groups[0].conditions.length === 0) ? (
-        <div className="rounded-xl border border-dashed border-neutral-800 p-6 text-center text-xs text-neutral-500">
-          No active filter rules. Click <strong className="text-neutral-400">+ Add condition</strong> to query the 50,000 orders.
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-6 text-center text-xs text-slate-500 shadow-xs">
+          No active conditions. Click <strong className="text-slate-800">+add condition</strong> to build custom filter logic.
         </div>
       ) : (
         <div className="space-y-4">
           {filterState.groups.map((group, gIndex) => (
             <div
               key={group.id}
-              className="rounded-xl border border-neutral-800/80 bg-neutral-900/40 p-3 space-y-3"
+              className="rounded-xl border border-slate-200 bg-white p-3.5 space-y-3 shadow-xs"
             >
               {/* Group Header */}
-              <div className="flex items-center justify-between text-xs pb-1 border-b border-neutral-800/60">
+              <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-neutral-400 uppercase">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase">
                     Group {gIndex + 1}
                   </span>
                   {/* Combinator Toggle */}
                   <button
                     onClick={() => handleToggleCombinator(group.id)}
-                    className="rounded bg-neutral-800 px-2 py-0.5 text-[10px] font-mono font-bold text-blue-400 hover:bg-neutral-700 transition"
+                    className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-mono font-bold text-blue-700 hover:bg-slate-200 transition"
                   >
                     Match: {group.combinator}
                   </button>
@@ -180,7 +177,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                 {filterState.groups.length > 1 && (
                   <button
                     onClick={() => handleRemoveGroup(group.id)}
-                    className="text-neutral-500 hover:text-red-400 transition"
+                    className="text-slate-400 hover:text-red-500 transition"
                     title="Delete group"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -196,7 +193,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                   return (
                     <div
                       key={condition.id}
-                      className="rounded-lg border border-neutral-800 bg-neutral-950 p-2.5 space-y-2"
+                      className="rounded-lg border border-slate-200 bg-slate-50/60 p-2.5 space-y-2"
                     >
                       {/* Field & Operator Row */}
                       <div className="flex items-center gap-2">
@@ -208,7 +205,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                               field: e.target.value as keyof NormalizedOrder,
                             })
                           }
-                          className="flex-1 rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+                          className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
                           {FIELD_CONFIGS.map((f) => (
                             <option key={f.id} value={f.id}>
@@ -225,7 +222,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                               operator: e.target.value as FilterOperator,
                             })
                           }
-                          className="flex-1 rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+                          className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                         >
                           {fieldConfig?.operators.map((op) => (
                             <option key={op.value} value={op.value}>
@@ -237,7 +234,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                         {/* Remove Condition */}
                         <button
                           onClick={() => handleRemoveCondition(group.id, condition.id)}
-                          className="p-1 text-neutral-500 hover:text-red-400 transition"
+                          className="p-1 text-slate-400 hover:text-red-500 transition"
                           title="Remove condition"
                         >
                           <X className="h-3.5 w-3.5" />
@@ -261,7 +258,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
               {/* Add Condition within Group */}
               <button
                 onClick={() => handleAddCondition(group.id)}
-                className="w-full text-center text-xs text-blue-400 hover:text-blue-300 py-1 hover:bg-neutral-800/40 rounded transition"
+                className="w-full text-center text-xs font-medium text-blue-600 hover:text-blue-700 py-1 hover:bg-slate-50 rounded transition"
               >
                 + Add rule to Group {gIndex + 1}
               </button>
@@ -273,7 +270,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
       {/* Add Group Button matching Wireframe */}
       <button
         onClick={handleAddGroup}
-        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900/60 p-2 text-xs font-semibold text-neutral-300 hover:bg-neutral-800 hover:text-white transition"
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white p-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 hover:text-slate-900 transition"
       >
         <FolderPlus className="h-3.5 w-3.5" />
         + Add Group
@@ -321,8 +318,8 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
               onClick={() => toggleOption(opt)}
               className={`rounded px-2 py-0.5 text-[10px] font-medium border transition ${
                 isSelected
-                  ? 'border-blue-500 bg-blue-500/20 text-blue-300 font-semibold'
-                  : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
+                  ? 'border-blue-600 bg-blue-600 text-white shadow-xs font-semibold'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400'
               }`}
             >
               {opt}
@@ -347,15 +344,15 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
           placeholder="Min"
           value={range[0]}
           onChange={(e) => onChange([Number(e.target.value) || 0, range[1]])}
-          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
-        <span className="text-xs text-neutral-500">to</span>
+        <span className="text-xs text-slate-400">to</span>
         <input
           type="number"
           placeholder="Max"
           value={range[1]}
           onChange={(e) => onChange([range[0], Number(e.target.value) || 0])}
-          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
     );
@@ -374,14 +371,14 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
           type="date"
           value={range[0]}
           onChange={(e) => onChange([e.target.value, range[1]])}
-          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
-        <span className="text-xs text-neutral-500">to</span>
+        <span className="text-xs text-slate-400">to</span>
         <input
           type="date"
           value={range[1]}
           onChange={(e) => onChange([range[0], e.target.value])}
-          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
     );
@@ -394,7 +391,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
         type="date"
         value={String(value ?? '')}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     );
   }
@@ -407,7 +404,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
         placeholder="Value..."
         value={String(value ?? '')}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
     );
   }
@@ -419,7 +416,7 @@ const ConditionValueInput: React.FC<ValueInputProps> = ({
       placeholder="Value..."
       value={String(value ?? '')}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+      className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
     />
   );
 };

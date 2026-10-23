@@ -46,7 +46,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
 
-  // Column definitions with default widths
+  // Column widths state
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     select: 48,
     id: 150,
@@ -58,26 +58,21 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     channel: 120,
   });
 
-  // Track focused cell for WAI-ARIA roving tabindex
+  // Roving tabindex cell focus
   const [focusedCell, setFocusedCell] = useState<CellPosition>({
     rowIndex: 0,
     colIndex: 1,
   });
 
-  // Shift-click range anchor
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
-
-  // Detail Drawer state
   const [activeDetailOrder, setActiveDetailOrder] = useState<NormalizedOrder | null>(null);
 
-  // Resizing state
   const resizingRef = useRef<{
     colId: string;
     startX: number;
     startWidth: number;
   } | null>(null);
 
-  // Measure container height
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -94,7 +89,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Columns definition list
   const columns: GridColumn[] = useMemo(
     () => [
       {
@@ -151,7 +145,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     [columnWidths]
   );
 
-  // Virtual window calculation
   const totalCount = orders.length;
   const totalHeight = totalCount * ROW_HEIGHT;
 
@@ -170,7 +163,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     setScrollTop(e.currentTarget.scrollTop);
   }, []);
 
-  // Cycle sort: None -> asc -> desc -> None
   const handleHeaderClick = (col: GridColumn) => {
     if (!col.sortable) return;
 
@@ -183,7 +175,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
   };
 
-  // Selection logic (Click + Shift+Click Range)
   const toggleRowSelection = (orderId: string, index: number, isShiftKey: boolean) => {
     const next = new Set(selectedIds);
 
@@ -207,7 +198,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     onSelectionChange(next);
   };
 
-  // Select all or deselect all
   const toggleSelectAll = () => {
     if (selectedIds.size === orders.length && orders.length > 0) {
       onSelectionChange(new Set());
@@ -216,12 +206,11 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
   };
 
-  // Keyboard navigation & WAI-ARIA
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (orders.length === 0) return;
 
     const maxRow = orders.length - 1;
-    const maxCol = columns.length; // col 0 is checkbox
+    const maxCol = columns.length;
 
     let { rowIndex, colIndex } = focusedCell;
 
@@ -260,7 +249,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
     setFocusedCell({ rowIndex, colIndex });
 
-    // Scroll into view if needed
     const targetTop = rowIndex * ROW_HEIGHT;
     const container = containerRef.current;
     if (container) {
@@ -272,7 +260,6 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
   };
 
-  // Column Resizing Handlers via Pointer Events
   const handleResizePointerDown = (colId: string, e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -314,7 +301,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   const isAllSelected = orders.length > 0 && selectedIds.size === orders.length;
 
   return (
-    <div className="relative flex flex-1 flex-col h-full w-full overflow-hidden bg-neutral-950 text-neutral-100 select-none">
+    <div className="relative flex flex-1 flex-col h-full w-full overflow-hidden bg-white text-slate-800 select-none">
       {/* Scrollable Grid Container */}
       <div
         ref={containerRef}
@@ -326,34 +313,34 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         aria-colcount={columns.length + 1}
         className="relative flex-1 overflow-auto focus:outline-none"
       >
-        {/* Sticky Table Header */}
+        {/* Sticky Table Header matching Wireframe */}
         <div
           role="row"
           aria-rowindex={1}
-          className="sticky top-0 z-30 flex border-b border-neutral-800 bg-neutral-900/95 backdrop-blur-md shadow-sm"
+          className="sticky top-0 z-30 flex border-b border-slate-300 bg-slate-50 shadow-xs"
           style={{ minWidth: 'max-content' }}
         >
           {/* Select All Column Header */}
           <div
             role="columnheader"
             aria-colindex={1}
-            className="flex items-center justify-center border-r border-neutral-800 px-3 py-2.5"
+            className="flex items-center justify-center border-r border-slate-200 px-3 py-2.5 bg-slate-50"
             style={{ width: columnWidths.select }}
           >
             <button
               onClick={toggleSelectAll}
               title="Select all rows"
-              className="text-neutral-400 hover:text-white transition"
+              className="text-slate-400 hover:text-slate-800 transition"
             >
               {isAllSelected ? (
-                <CheckSquare className="h-4 w-4 text-blue-500" />
+                <CheckSquare className="h-4 w-4 text-blue-600" />
               ) : (
                 <Square className="h-4 w-4" />
               )}
             </button>
           </div>
 
-          {/* Interactive Column Headers */}
+          {/* Column Headers with Sort & Quick Filter Input */}
           {columns.map((col, cIndex) => {
             const isPinned = pinnedColumn === col.id;
             const isSorted = sort.field === col.id;
@@ -364,8 +351,8 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                 role="columnheader"
                 aria-colindex={cIndex + 2}
                 aria-sort={isSorted ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
-                className={`relative flex flex-col justify-between border-r border-neutral-800 p-2 text-xs font-semibold text-neutral-300 transition-colors ${
-                  isPinned ? 'sticky left-12 z-20 bg-neutral-900 shadow-md' : ''
+                className={`relative flex flex-col justify-between border-r border-slate-200 p-2 text-xs font-semibold text-slate-700 bg-slate-50 transition-colors ${
+                  isPinned ? 'sticky left-12 z-20 bg-slate-100 shadow-md border-r-2 border-r-slate-300' : ''
                 }`}
                 style={{ width: col.width }}
               >
@@ -373,16 +360,16 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                 <div className="flex items-center justify-between gap-1">
                   <div
                     onClick={() => handleHeaderClick(col)}
-                    className="flex flex-1 items-center gap-1.5 cursor-pointer hover:text-white truncate"
+                    className="flex flex-1 items-center gap-1.5 cursor-pointer hover:text-slate-950 truncate"
                   >
                     <span className="truncate">{col.header}</span>
                     {col.sortable && (
-                      <span className="shrink-0 text-neutral-400">
+                      <span className="shrink-0 text-slate-400">
                         {isSorted ? (
                           sort.direction === 'asc' ? (
-                            <ArrowUp className="h-3.5 w-3.5 text-blue-400" />
+                            <ArrowUp className="h-3.5 w-3.5 text-blue-600" />
                           ) : (
-                            <ArrowDown className="h-3.5 w-3.5 text-blue-400" />
+                            <ArrowDown className="h-3.5 w-3.5 text-blue-600" />
                           )
                         ) : (
                           <ArrowUpDown className="h-3 w-3 opacity-40 hover:opacity-100" />
@@ -391,12 +378,12 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                     )}
                   </div>
 
-                  {/* Pin / Unpin Button */}
+                  {/* Pin Button */}
                   <button
                     onClick={() => onPinnedChange(isPinned ? null : col.id)}
                     title={isPinned ? 'Unpin column' : 'Pin column to left'}
-                    className={`rounded p-1 hover:bg-neutral-800 transition ${
-                      isPinned ? 'text-blue-400' : 'text-neutral-500 hover:text-neutral-300'
+                    className={`rounded p-1 hover:bg-slate-200 transition ${
+                      isPinned ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'
                     }`}
                   >
                     {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
@@ -405,24 +392,24 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
                 {/* Column Quick Filter Input matching Wireframe */}
                 {onColumnFilterChange && (
-                  <div className="mt-1.5 flex items-center rounded border border-neutral-800 bg-neutral-950/80 px-1.5 py-0.5">
-                    <Search className="h-2.5 w-2.5 text-neutral-500 mr-1 shrink-0" />
+                  <div className="mt-1.5 flex items-center rounded border border-slate-300 bg-white px-1.5 py-0.5 shadow-2xs">
+                    <Search className="h-2.5 w-2.5 text-slate-400 mr-1 shrink-0" />
                     <input
                       type="text"
                       placeholder={`Filter...`}
                       value={columnFilters[col.id] || ''}
                       onChange={(e) => onColumnFilterChange(col.id, e.target.value)}
-                      className="w-full bg-transparent text-[11px] text-neutral-200 placeholder-neutral-600 focus:outline-none"
+                      className="w-full bg-transparent text-[11px] text-slate-800 placeholder-slate-400 focus:outline-none"
                     />
                   </div>
                 )}
 
-                {/* Resizing Handle with Pointer Capture */}
+                {/* Column Resize Handle */}
                 <div
                   onPointerDown={(e) => handleResizePointerDown(col.id, e)}
                   onPointerMove={handleResizePointerMove}
                   onPointerUp={handleResizePointerUp}
-                  className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500 transition-colors"
+                  className="absolute top-0 right-0 h-full w-2 cursor-col-resize hover:bg-blue-400/50 active:bg-blue-600 transition-colors"
                 />
               </div>
             );
@@ -431,18 +418,18 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
 
         {/* Empty State matching Wireframe: "Zero matching Result" */}
         {orders.length === 0 && (
-          <div className="flex h-96 w-full flex-col items-center justify-center p-8 text-center">
-            <XCircle className="h-12 w-12 text-neutral-600 mb-3" />
-            <h3 className="text-xl font-serif text-neutral-300 tracking-wide">
+          <div className="flex h-96 w-full flex-col items-center justify-center p-8 text-center bg-white">
+            <XCircle className="h-12 w-12 text-slate-300 mb-3" />
+            <h3 className="text-2xl font-serif text-slate-500 tracking-wide font-normal">
               Zero matching Result
             </h3>
-            <p className="mt-1 text-xs text-neutral-500 max-w-sm">
-              No orders matched your current filters. Try relaxing or resetting your criteria.
+            <p className="mt-1.5 text-xs text-slate-400 max-w-sm">
+              No orders matched your active filter criteria. Try relaxing or clearing your conditions.
             </p>
             {onResetFilters && (
               <button
                 onClick={onResetFilters}
-                className="mt-4 rounded-lg bg-neutral-800 border border-neutral-700 px-4 py-2 text-xs font-medium text-white hover:bg-neutral-700 transition"
+                className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-slate-800 transition"
               >
                 Reset All Filters
               </button>
@@ -482,12 +469,12 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                     aria-selected={isSelected}
                     onClick={(e) => toggleRowSelection(order.id, actualIndex, e.shiftKey)}
                     onDoubleClick={() => setActiveDetailOrder(order)}
-                    className={`flex items-center border-b border-neutral-800/60 text-xs transition-colors cursor-pointer ${
+                    className={`flex items-center border-b border-slate-200 text-xs transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-950/40 text-blue-100 hover:bg-blue-950/60'
+                        ? 'bg-blue-50/80 text-blue-900 font-medium'
                         : actualIndex % 2 === 0
-                        ? 'bg-neutral-950 hover:bg-neutral-900/60'
-                        : 'bg-neutral-900/30 hover:bg-neutral-900/70'
+                        ? 'bg-white hover:bg-slate-50'
+                        : 'bg-slate-50/40 hover:bg-slate-100/60'
                     }`}
                     style={{ height: ROW_HEIGHT }}
                   >
@@ -496,17 +483,17 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                       role="gridcell"
                       aria-colindex={1}
                       tabIndex={isRowFocused && focusedCell.colIndex === 0 ? 0 : -1}
-                      className={`flex items-center justify-center border-r border-neutral-800/60 px-3 h-full ${
+                      className={`flex items-center justify-center border-r border-slate-200 px-3 h-full ${
                         isRowFocused && focusedCell.colIndex === 0
-                          ? 'ring-2 ring-blue-500 ring-inset z-10'
+                          ? 'ring-2 ring-blue-600 ring-inset z-10'
                           : ''
                       }`}
                       style={{ width: columnWidths.select }}
                     >
                       {isSelected ? (
-                        <CheckSquare className="h-4 w-4 text-blue-500" />
+                        <CheckSquare className="h-4 w-4 text-blue-600" />
                       ) : (
-                        <Square className="h-4 w-4 text-neutral-600" />
+                        <Square className="h-4 w-4 text-slate-300 hover:text-slate-500" />
                       )}
                     </div>
 
@@ -522,41 +509,41 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           role="gridcell"
                           aria-colindex={cIndex + 2}
                           tabIndex={isCellFocused ? 0 : -1}
-                          className={`flex items-center px-3 h-full border-r border-neutral-800/60 truncate ${
+                          className={`flex items-center px-3 h-full border-r border-slate-200 truncate ${
                             col.align === 'right' ? 'justify-end font-mono' : 'justify-start'
                           } ${
                             isPinned
-                              ? 'sticky left-12 z-10 bg-inherit shadow-md backdrop-blur-sm'
+                              ? 'sticky left-12 z-10 bg-inherit shadow-md border-r-2 border-r-slate-300 backdrop-blur-sm'
                               : ''
                           } ${
-                            isCellFocused ? 'ring-2 ring-blue-500 ring-inset z-10' : ''
+                            isCellFocused ? 'ring-2 ring-blue-600 ring-inset z-10' : ''
                           }`}
                           style={{ width: col.width }}
                         >
                           {col.id === 'id' && (
-                            <span className="font-mono text-neutral-200 font-medium">
+                            <span className="font-mono text-slate-900 font-semibold">
                               {order.id}
                             </span>
                           )}
 
                           {col.id === 'customerName' && (
-                            <span className="truncate text-neutral-300">
+                            <span className="truncate text-slate-800 font-medium">
                               {order.customerName || 'Anonymous'}
                             </span>
                           )}
 
                           {col.id === 'status' && (
                             <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium border ${
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
                                 order.status === 'delivered'
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                   : order.status === 'shipped'
-                                  ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
                                   : order.status === 'processing'
-                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
                                   : order.status === 'cancelled'
-                                  ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                  : 'bg-neutral-500/10 text-neutral-400 border-neutral-500/20'
+                                  ? 'bg-red-50 text-red-700 border-red-200'
+                                  : 'bg-slate-100 text-slate-700 border-slate-200'
                               }`}
                             >
                               {order.status}
@@ -564,25 +551,25 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           )}
 
                           {col.id === 'amount' && (
-                            <span className="font-mono font-medium text-neutral-200">
+                            <span className="font-mono font-medium text-slate-900">
                               {order.amountFormatted}
                             </span>
                           )}
 
                           {col.id === 'createdAt' && (
-                            <span className="font-mono text-neutral-400">
+                            <span className="font-mono text-slate-600 text-[11px]">
                               {order.createdAtFormatted}
                             </span>
                           )}
 
                           {col.id === 'region' && (
-                            <span className="font-mono text-neutral-300 text-[11px]">
+                            <span className="font-mono text-slate-700 text-[11px]">
                               {order.region}
                             </span>
                           )}
 
                           {col.id === 'channel' && (
-                            <span className="text-neutral-400 capitalize">
+                            <span className="text-slate-600 capitalize">
                               {order.channel}
                             </span>
                           )}
@@ -597,7 +584,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         )}
       </div>
 
-      {/* Row Detail Drawer (Enter or double-click to trigger) */}
+      {/* Row Detail Drawer */}
       <RowDetailSheet
         order={activeDetailOrder}
         open={Boolean(activeDetailOrder)}
