@@ -23,12 +23,14 @@ export function exportOrders(
       'Customer Email',
       'Status',
       'Amount (INR)',
-      'Date',
+      'Created At',
+      'Updated At',
       'Region',
       'Channel',
       'Priority',
       'Payment Method',
       'Items',
+      'Notes',
     ];
 
     const rows = exportData.map((o) => [
@@ -38,11 +40,13 @@ export function exportOrders(
       escapeCsv(o.status),
       o.amount.toFixed(2),
       escapeCsv(o.createdAtFormatted),
+      escapeCsv(o.updatedAtFormatted),
       escapeCsv(o.region),
       escapeCsv(o.channel),
       escapeCsv(o.priorityLabel),
       escapeCsv(o.paymentMethod),
       o.itemCount,
+      escapeCsv(o.notes),
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');

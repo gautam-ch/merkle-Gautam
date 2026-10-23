@@ -2,7 +2,9 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Check,
   CheckSquare,
+  Columns3,
   Pin,
   PinOff,
   Search,
@@ -16,6 +18,22 @@ import { RowDetailSheet } from './RowDetailSheet';
 
 const ROW_HEIGHT = 40;
 const OVERSCAN = 5;
+
+const ALL_COLUMNS: Omit<GridColumn, 'width'>[] = [
+  { id: 'id', header: 'Order ID', sortable: true, type: 'string' },
+  { id: 'customerName', header: 'Customer Name', sortable: true, type: 'string' },
+  { id: 'customerEmail', header: 'Customer Email', sortable: true, type: 'string' },
+  { id: 'status', header: 'Status', sortable: true, type: 'badge' },
+  { id: 'amount', header: 'Amount', align: 'right', sortable: true, type: 'number' },
+  { id: 'createdAt', header: 'Created At', sortable: true, type: 'date' },
+  { id: 'updatedAt', header: 'Updated At', sortable: true, type: 'date' },
+  { id: 'priority', header: 'Priority', sortable: true, type: 'badge' },
+  { id: 'paymentMethod', header: 'Payment Method', sortable: true, type: 'string' },
+  { id: 'itemCount', header: 'Items', align: 'right', sortable: true, type: 'number' },
+  { id: 'region', header: 'Region', sortable: true, type: 'string' },
+  { id: 'channel', header: 'Channel', sortable: true, type: 'string' },
+  { id: 'notes', header: 'Notes', sortable: true, type: 'string' },
+];
 
 interface VirtualGridProps {
   orders: NormalizedOrder[];
@@ -46,17 +64,29 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
 
-  // Column widths state
+  // Default widths for all 13 columns
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
     select: 48,
     id: 150,
-    customerName: 180,
-    status: 130,
-    amount: 140,
+    customerName: 170,
+    customerEmail: 220,
+    status: 120,
+    amount: 130,
     createdAt: 160,
-    region: 130,
-    channel: 120,
+    updatedAt: 160,
+    priority: 110,
+    paymentMethod: 130,
+    itemCount: 80,
+    region: 110,
+    channel: 110,
+    notes: 250,
   });
+
+  // Column visibility state: ALL visible by default
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+    () => new Set(ALL_COLUMNS.map((c) => c.id))
+  );
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
 
   // Roving tabindex cell focus
   const [focusedCell, setFocusedCell] = useState<CellPosition>({
@@ -89,61 +119,13 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  const columns: GridColumn[] = useMemo(
-    () => [
-      {
-        id: 'id',
-        header: 'Order ID',
-        width: columnWidths.id ?? 150,
-        sortable: true,
-        type: 'string',
-      },
-      {
-        id: 'customerName',
-        header: 'Customer',
-        width: columnWidths.customerName ?? 180,
-        sortable: true,
-        type: 'string',
-      },
-      {
-        id: 'status',
-        header: 'Status',
-        width: columnWidths.status ?? 130,
-        sortable: true,
-        type: 'badge',
-      },
-      {
-        id: 'amount',
-        header: 'Amount',
-        width: columnWidths.amount ?? 140,
-        align: 'right',
-        sortable: true,
-        type: 'number',
-      },
-      {
-        id: 'createdAt',
-        header: 'Date',
-        width: columnWidths.createdAt ?? 160,
-        sortable: true,
-        type: 'date',
-      },
-      {
-        id: 'region',
-        header: 'Region',
-        width: columnWidths.region ?? 130,
-        sortable: true,
-        type: 'string',
-      },
-      {
-        id: 'channel',
-        header: 'Channel',
-        width: columnWidths.channel ?? 120,
-        sortable: true,
-        type: 'string',
-      },
-    ],
-    [columnWidths]
-  );
+  // Compute active columns based on visibility
+  const columns: GridColumn[] = useMemo(() => {
+    return ALL_COLUMNS.filter((col) => visibleColumns.has(col.id)).map((col) => ({
+      ...col,
+      width: columnWidths[col.id] ?? 140,
+    }));
+  }, [visibleColumns, columnWidths]);
 
   const totalCount = orders.length;
   const totalHeight = totalCount * ROW_HEIGHT;
@@ -298,10 +280,75 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     }
   };
 
+  const toggleColumnVisibility = (colId: string) => {
+    setVisibleColumns((prev) => {
+      const next = new Set(prev);
+      if (next.has(colId)) {
+        if (next.size > 1) {
+          next.delete(colId);
+        }
+      } else {
+        next.add(colId);
+      }
+      return next;
+    });
+  };
+
   const isAllSelected = orders.length > 0 && selectedIds.size === orders.length;
 
   return (
     <div className="relative flex flex-1 flex-col h-full w-full overflow-hidden bg-white text-slate-800 select-none">
+      {/* Subheader Toolbar: Column Customizer & Stats */}
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/70 px-4 py-1.5 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-700">Data Grid</span>
+          <span className="text-[11px] text-slate-400">
+            ({columns.length} columns displayed)
+          </span>
+        </div>
+
+        {/* Column Visibility Menu Button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowColumnPicker((v) => !v)}
+            className="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50 transition"
+          >
+            <Columns3 className="h-3.5 w-3.5 text-slate-500" />
+            Columns ({columns.length}/{ALL_COLUMNS.length})
+          </button>
+
+          {showColumnPicker && (
+            <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-1 px-1 text-[11px] font-bold uppercase text-slate-500">
+                <span>Toggle Columns</span>
+                <button
+                  onClick={() => setVisibleColumns(new Set(ALL_COLUMNS.map((c) => c.id)))}
+                  className="text-blue-600 hover:underline capitalize font-semibold"
+                >
+                  Show all
+                </button>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-0.5">
+                {ALL_COLUMNS.map((col) => {
+                  const isVisible = visibleColumns.has(col.id);
+                  return (
+                    <button
+                      key={col.id}
+                      onClick={() => toggleColumnVisibility(col.id)}
+                      className="flex w-full items-center justify-between rounded px-2 py-1 text-xs text-left text-slate-700 hover:bg-slate-100 transition"
+                    >
+                      <span className="truncate">{col.header}</span>
+                      {isVisible && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Scrollable Grid Container */}
       <div
         ref={containerRef}
@@ -313,7 +360,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         aria-colcount={columns.length + 1}
         className="relative flex-1 overflow-auto focus:outline-none"
       >
-        {/* Sticky Table Header matching Wireframe */}
+        {/* Sticky Table Header */}
         <div
           role="row"
           aria-rowindex={1}
@@ -390,7 +437,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                   </button>
                 </div>
 
-                {/* Column Quick Filter Input matching Wireframe */}
+                {/* Column Quick Filter Input */}
                 {onColumnFilterChange && (
                   <div className="mt-1.5 flex items-center rounded border border-slate-300 bg-white px-1.5 py-0.5 shadow-2xs">
                     <Search className="h-2.5 w-2.5 text-slate-400 mr-1 shrink-0" />
@@ -416,7 +463,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
           })}
         </div>
 
-        {/* Empty State matching Wireframe: "Zero matching Result" */}
+        {/* Empty State */}
         {orders.length === 0 && (
           <div className="flex h-96 w-full flex-col items-center justify-center p-8 text-center bg-white">
             <XCircle className="h-12 w-12 text-slate-300 mb-3" />
@@ -532,6 +579,12 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                             </span>
                           )}
 
+                          {col.id === 'customerEmail' && (
+                            <span className="truncate font-mono text-[11px] text-slate-600" title={order.customerEmail}>
+                              {order.customerEmail || '—'}
+                            </span>
+                          )}
+
                           {col.id === 'status' && (
                             <span
                               className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
@@ -562,6 +615,40 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                             </span>
                           )}
 
+                          {col.id === 'updatedAt' && (
+                            <span className="font-mono text-slate-500 text-[11px]">
+                              {order.updatedAtFormatted}
+                            </span>
+                          )}
+
+                          {col.id === 'priority' && (
+                            <span
+                              className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold border ${
+                                order.priorityLabel === 'High'
+                                  ? 'bg-red-50 text-red-700 border-red-200'
+                                  : order.priorityLabel === 'Medium'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                  : order.priorityLabel === 'Low'
+                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                  : 'bg-slate-100 text-slate-400 border-slate-200'
+                              }`}
+                            >
+                              {order.priorityLabel}
+                            </span>
+                          )}
+
+                          {col.id === 'paymentMethod' && (
+                            <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase text-slate-700">
+                              {order.paymentMethod}
+                            </span>
+                          )}
+
+                          {col.id === 'itemCount' && (
+                            <span className="font-mono text-slate-800 font-medium">
+                              {order.itemCount}
+                            </span>
+                          )}
+
                           {col.id === 'region' && (
                             <span className="font-mono text-slate-700 text-[11px]">
                               {order.region}
@@ -571,6 +658,15 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           {col.id === 'channel' && (
                             <span className="text-slate-600 capitalize">
                               {order.channel}
+                            </span>
+                          )}
+
+                          {col.id === 'notes' && (
+                            <span
+                              className="truncate text-slate-600 text-[11px]"
+                              title={order.notes}
+                            >
+                              {order.notes || <span className="text-slate-300 italic">—</span>}
                             </span>
                           )}
                         </div>
