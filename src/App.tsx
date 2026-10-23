@@ -79,7 +79,17 @@ export const App: React.FC = () => {
     if (filterKeys.length > 0) {
       result = result.filter((order) => {
         return filterKeys.every((key) => {
-          const filterVal = deferredColumnFilters[key].toLowerCase();
+          const filterVal = deferredColumnFilters[key].trim().toLowerCase();
+          if (!filterVal) return true;
+
+          if (key === 'priority') {
+            return order.priorityLabel.toLowerCase() === filterVal;
+          }
+          if (key === 'status' || key === 'channel' || key === 'region' || key === 'paymentMethod') {
+            const val = String((order as unknown as Record<string, unknown>)[key] ?? '').toLowerCase();
+            return val === filterVal;
+          }
+
           const orderVal = String((order as unknown as Record<string, unknown>)[key] ?? '').toLowerCase();
           return orderVal.includes(filterVal);
         });

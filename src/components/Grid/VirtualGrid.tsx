@@ -33,6 +33,48 @@ const ALL_COLUMNS: Omit<GridColumn, 'width'>[] = [
   { id: 'notes', header: 'Notes', sortable: true, type: 'string' },
 ];
 
+const COLUMN_ENUM_OPTIONS: Partial<Record<keyof NormalizedOrder, { label: string; value: string }[]>> = {
+  status: [
+    { label: 'All Statuses', value: '' },
+    { label: 'Delivered', value: 'delivered' },
+    { label: 'Shipped', value: 'shipped' },
+    { label: 'Processing', value: 'processing' },
+    { label: 'Pending', value: 'pending' },
+    { label: 'Cancelled', value: 'cancelled' },
+  ],
+  channel: [
+    { label: 'All Channels', value: '' },
+    { label: 'Web', value: 'web' },
+    { label: 'App', value: 'app' },
+    { label: 'Store', value: 'store' },
+    { label: 'Phone', value: 'phone' },
+  ],
+  region: [
+    { label: 'All Regions', value: '' },
+    { label: 'North', value: 'NORTH' },
+    { label: 'South', value: 'SOUTH' },
+    { label: 'East', value: 'EAST' },
+    { label: 'West', value: 'WEST' },
+    { label: 'Central', value: 'CENTRAL' },
+    { label: 'Northeast', value: 'NORTHEAST' },
+  ],
+  paymentMethod: [
+    { label: 'All Payments', value: '' },
+    { label: 'UPI', value: 'upi' },
+    { label: 'Card', value: 'card' },
+    { label: 'Netbanking', value: 'netbanking' },
+    { label: 'COD', value: 'cod' },
+    { label: 'Wallet', value: 'wallet' },
+  ],
+  priority: [
+    { label: 'All Priorities', value: '' },
+    { label: 'High', value: 'High' },
+    { label: 'Medium', value: 'Medium' },
+    { label: 'Low', value: 'Low' },
+    { label: 'None', value: 'None' },
+  ],
+};
+
 interface VirtualGridProps {
   orders: NormalizedOrder[];
   sort: SortState;
@@ -426,17 +468,33 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                   </button>
                 </div>
 
-                {/* Column Quick Filter Input */}
+                {/* Column Quick Filter Input / Dropdown */}
                 {onColumnFilterChange && (
                   <div className="mt-1.5 flex items-center rounded border border-slate-300 bg-white px-1.5 py-0.5 shadow-2xs">
-                    <Search className="h-2.5 w-2.5 text-slate-400 mr-1 shrink-0" />
-                    <input
-                      type="text"
-                      placeholder={`Filter...`}
-                      value={columnFilters[col.id] || ''}
-                      onChange={(e) => onColumnFilterChange(col.id, e.target.value)}
-                      className="w-full bg-transparent text-[11px] text-slate-800 placeholder-slate-400 focus:outline-none"
-                    />
+                    {COLUMN_ENUM_OPTIONS[col.id] ? (
+                      <select
+                        value={columnFilters[col.id] || ''}
+                        onChange={(e) => onColumnFilterChange(col.id, e.target.value)}
+                        className="w-full bg-transparent text-[11px] text-slate-800 focus:outline-none cursor-pointer truncate"
+                      >
+                        {COLUMN_ENUM_OPTIONS[col.id]?.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="flex items-center w-full">
+                        <Search className="h-2.5 w-2.5 text-slate-400 mr-1 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Filter..."
+                          value={columnFilters[col.id] || ''}
+                          onChange={(e) => onColumnFilterChange(col.id, e.target.value)}
+                          className="w-full bg-transparent text-[11px] text-slate-800 placeholder-slate-400 focus:outline-none"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
