@@ -1,0 +1,425 @@
+import { FolderPlus, Plus, Trash2, X } from 'lucide-react';
+import React from 'react';
+import type {
+  FieldConfig,
+  FilterCondition,
+  FilterGroup,
+  FilterOperator,
+  FilterState,
+} from '../../types/filter';
+import type { NormalizedOrder } from '../../types/order';
+import { FIELD_CONFIGS } from '../../utils/filter';
+
+interface FilterBuilderProps {
+  filterState: FilterState;
+  onChange: (newState: FilterState) => void;
+}
+
+export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onChange }) => {
+  // Add a condition to a group (defaults to first group or creates one)
+  const handleAddCondition = (groupId?: string) => {
+    const targetGroupId = groupId ?? filterState.groups[0]?.id;
+    const newCondition: FilterCondition = {
+      id: `cond_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      field: 'status',
+      operator: 'in',
+      value: ['delivered'],
+    };
+
+    if (!targetGroupId || filterState.groups.length === 0) {
+      const newGroup: FilterGroup = {
+        id: `grp_${Date.now()}`,
+        combinator: 'AND',
+        conditions: [newCondition],
+      };
+      onChange({ groups: [newGroup] });
+    } else {
+      onChange({
+        groups: filterState.groups.map((g) =>
+          g.id === targetGroupId
+            ? { ...g, conditions: [...g.conditions, newCondition] }
+            : g
+        ),
+      });
+    }
+  };
+
+  // Add a new compound group
+  const handleAddGroup = () => {
+    const newGroup: FilterGroup = {
+      id: `grp_${Date.now()}`,
+      combinator: 'OR',
+      conditions: [
+        {
+          id: `cond_${Date.now()}`,
+          field: 'status',
+          operator: 'in',
+          value: [],
+        },
+      ],
+    };
+
+    onChange({
+      groups: [...filterState.groups, newGroup],
+    });
+  };
+
+  const handleRemoveGroup = (groupId: string) => {
+    onChange({
+      groups: filterState.groups.filter((g) => g.id !== groupId),
+    });
+  };
+
+  const handleToggleCombinator = (groupId: string) => {
+    onChange({
+      groups: filterState.groups.map((g) =>
+        g.id === groupId
+          ? { ...g, combinator: g.combinator === 'AND' ? 'OR' : 'AND' }
+          : g
+      ),
+    });
+  };
+
+  const handleUpdateCondition = (
+    groupId: string,
+    conditionId: string,
+    updates: Partial<FilterCondition>
+  ) => {
+    onChange({
+      groups: filterState.groups.map((g) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          conditions: g.conditions.map((c) => {
+            if (c.id !== conditionId) return c;
+
+            // If field changed, set default operator and empty value
+            if (updates.field && updates.field !== c.field) {
+              const newConfig = FIELD_CONFIGS.find((f) => f.id === updates.field);
+              const defaultOp = newConfig?.operators[0]?.value ?? 'contains';
+              let defaultValue: unknown = '';
+              if (newConfig?.type === 'enum') {
+                defaultValue = [];
+              } else if (defaultOp === 'between') {
+                defaultValue = [0, 1000];
+              }
+
+              return {
+                ...c,
+                field: updates.field,
+                operator: defaultOp,
+                value: defaultValue as FilterCondition['value'],
+              };
+            }
+
+            return { ...c, ...updates };
+          }),
+        };
+      }),
+    });
+  };
+
+  const handleRemoveCondition = (groupId: string, conditionId: string) => {
+    onChange({
+      groups: filterState.groups
+        .map((g) => {
+          if (g.id !== groupId) return g;
+          return {
+            ...g,
+            conditions: g.conditions.filter((c) => c.id !== conditionId),
+          };
+        })
+        .filter((g) => g.conditions.length > 0 || filterState.groups.length === 1),
+    });
+  };
+
+  return (
+    <div className="flex flex-col h-full w-full overflow-y-auto space-y-4 pr-1">
+      {/* Top Header matching Wireframe */}
+      <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-neutral-300">
+          Filter Grid
+        </h2>
+        <button
+          onClick={() => handleAddCondition()}
+          className="flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 transition"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add condition
+        </button>
+      </div>
+
+      {/* Filter Groups Container */}
+      {filterState.groups.length === 0 ||
+      (filterState.groups.length === 1 && filterState.groups[0].conditions.length === 0) ? (
+        <div className="rounded-xl border border-dashed border-neutral-800 p-6 text-center text-xs text-neutral-500">
+          No active filter rules. Click <strong className="text-neutral-400">+ Add condition</strong> to query the 50,000 orders.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filterState.groups.map((group, gIndex) => (
+            <div
+              key={group.id}
+              className="rounded-xl border border-neutral-800/80 bg-neutral-900/40 p-3 space-y-3"
+            >
+              {/* Group Header */}
+              <div className="flex items-center justify-between text-xs pb-1 border-b border-neutral-800/60">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-neutral-400 uppercase">
+                    Group {gIndex + 1}
+                  </span>
+                  {/* Combinator Toggle */}
+                  <button
+                    onClick={() => handleToggleCombinator(group.id)}
+                    className="rounded bg-neutral-800 px-2 py-0.5 text-[10px] font-mono font-bold text-blue-400 hover:bg-neutral-700 transition"
+                  >
+                    Match: {group.combinator}
+                  </button>
+                </div>
+
+                {filterState.groups.length > 1 && (
+                  <button
+                    onClick={() => handleRemoveGroup(group.id)}
+                    className="text-neutral-500 hover:text-red-400 transition"
+                    title="Delete group"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Conditions List */}
+              <div className="space-y-2.5">
+                {group.conditions.map((condition) => {
+                  const fieldConfig = FIELD_CONFIGS.find((f) => f.id === condition.field);
+
+                  return (
+                    <div
+                      key={condition.id}
+                      className="rounded-lg border border-neutral-800 bg-neutral-950 p-2.5 space-y-2"
+                    >
+                      {/* Field & Operator Row */}
+                      <div className="flex items-center gap-2">
+                        {/* Field Selector */}
+                        <select
+                          value={condition.field}
+                          onChange={(e) =>
+                            handleUpdateCondition(group.id, condition.id, {
+                              field: e.target.value as keyof NormalizedOrder,
+                            })
+                          }
+                          className="flex-1 rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+                        >
+                          {FIELD_CONFIGS.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        {/* Operator Selector */}
+                        <select
+                          value={condition.operator}
+                          onChange={(e) =>
+                            handleUpdateCondition(group.id, condition.id, {
+                              operator: e.target.value as FilterOperator,
+                            })
+                          }
+                          className="flex-1 rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+                        >
+                          {fieldConfig?.operators.map((op) => (
+                            <option key={op.value} value={op.value}>
+                              {op.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        {/* Remove Condition */}
+                        <button
+                          onClick={() => handleRemoveCondition(group.id, condition.id)}
+                          className="p-1 text-neutral-500 hover:text-red-400 transition"
+                          title="Remove condition"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Value Input */}
+                      <ConditionValueInput
+                        config={fieldConfig}
+                        operator={condition.operator}
+                        value={condition.value}
+                        onChange={(newVal) =>
+                          handleUpdateCondition(group.id, condition.id, { value: newVal })
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add Condition within Group */}
+              <button
+                onClick={() => handleAddCondition(group.id)}
+                className="w-full text-center text-xs text-blue-400 hover:text-blue-300 py-1 hover:bg-neutral-800/40 rounded transition"
+              >
+                + Add rule to Group {gIndex + 1}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add Group Button matching Wireframe */}
+      <button
+        onClick={handleAddGroup}
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900/60 p-2 text-xs font-semibold text-neutral-300 hover:bg-neutral-800 hover:text-white transition"
+      >
+        <FolderPlus className="h-3.5 w-3.5" />
+        + Add Group
+      </button>
+    </div>
+  );
+};
+
+// Specialized Value Input by Field Type
+interface ValueInputProps {
+  config?: FieldConfig;
+  operator: FilterOperator;
+  value: FilterCondition['value'];
+  onChange: (val: FilterCondition['value']) => void;
+}
+
+const ConditionValueInput: React.FC<ValueInputProps> = ({
+  config,
+  operator,
+  value,
+  onChange,
+}) => {
+  if (!config) return null;
+
+  // Enum Multi-select Pills
+  if (config.type === 'enum' && config.options) {
+    const selected: string[] = Array.isArray(value) ? value.map(String) : [];
+
+    const toggleOption = (opt: string) => {
+      if (selected.includes(opt)) {
+        onChange(selected.filter((item) => item !== opt));
+      } else {
+        onChange([...selected, opt]);
+      }
+    };
+
+    return (
+      <div className="flex flex-wrap gap-1 pt-1">
+        {config.options.map((opt) => {
+          const isSelected = selected.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggleOption(opt)}
+              className={`rounded px-2 py-0.5 text-[10px] font-medium border transition ${
+                isSelected
+                  ? 'border-blue-500 bg-blue-500/20 text-blue-300 font-semibold'
+                  : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
+              }`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Between for Numbers
+  if (config.type === 'number' && operator === 'between') {
+    const range: [number, number] =
+      Array.isArray(value) && value.length === 2
+        ? [Number(value[0]) || 0, Number(value[1]) || 0]
+        : [0, 1000];
+
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          placeholder="Min"
+          value={range[0]}
+          onChange={(e) => onChange([Number(e.target.value) || 0, range[1]])}
+          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+        />
+        <span className="text-xs text-neutral-500">to</span>
+        <input
+          type="number"
+          placeholder="Max"
+          value={range[1]}
+          onChange={(e) => onChange([range[0], Number(e.target.value) || 0])}
+          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+        />
+      </div>
+    );
+  }
+
+  // Between for Dates
+  if (config.type === 'date' && operator === 'between') {
+    const range: [string, string] =
+      Array.isArray(value) && value.length === 2
+        ? [String(value[0] ?? ''), String(value[1] ?? '')]
+        : ['', ''];
+
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="date"
+          value={range[0]}
+          onChange={(e) => onChange([e.target.value, range[1]])}
+          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+        />
+        <span className="text-xs text-neutral-500">to</span>
+        <input
+          type="date"
+          value={range[1]}
+          onChange={(e) => onChange([range[0], e.target.value])}
+          className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+        />
+      </div>
+    );
+  }
+
+  // Single Date
+  if (config.type === 'date') {
+    return (
+      <input
+        type="date"
+        value={String(value ?? '')}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+      />
+    );
+  }
+
+  // Single Number
+  if (config.type === 'number') {
+    return (
+      <input
+        type="number"
+        placeholder="Value..."
+        value={String(value ?? '')}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+      />
+    );
+  }
+
+  // Default Text
+  return (
+    <input
+      type="text"
+      placeholder="Value..."
+      value={String(value ?? '')}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500"
+    />
+  );
+};

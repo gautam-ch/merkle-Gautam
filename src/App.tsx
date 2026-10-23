@@ -7,23 +7,35 @@ import {
   RefreshCw,
   Share2,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useDeferredValue, useMemo, useState } from 'react';
+import { FilterBuilder } from './components/FilterBuilder/FilterBuilder';
+import { FilterChips } from './components/FilterBuilder/FilterChips';
 import { VirtualGrid } from './components/Grid/VirtualGrid';
 import { LoadingScreen } from './components/shared/LoadingScreen';
 import { useOrders } from './hooks/useOrders';
 import { useUrlState } from './hooks/useUrlState';
+import type { FilterState } from './types/filter';
 import type { NormalizedOrder } from './types/order';
 import { exportOrders } from './utils/export';
+import { applyFilter } from './utils/filter';
 import { sortOrders } from './utils/sort';
 
 export const App: React.FC = () => {
   const { orders, loading, error, progress, reload } = useOrders('/orders.json');
   const { urlState, syncToUrl } = useUrlState();
 
-  // Column quick filters
+  // Column quick filters (in-grid header)
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [copiedLink, setCopiedLink] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // React 19 Concurrent snappiness: deferred values keep input typing at 60 FPS
+  const deferredFilterState = useDeferredValue(urlState.filter);
+  const deferredColumnFilters = useDeferredValue(columnFilters);
+
+  const handleFilterChange = (newFilter: FilterState) => {
+    syncToUrl({ filter: newFilter });
+  };
 
   const handleColumnFilterChange = (columnId: string, value: string) => {
     setColumnFilters((prev) => {
@@ -36,33 +48,54 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleResetFilters = () => {
-    setColumnFilters({});
+  const handleRemoveCondition = (groupId: string, conditionId: string) => {
+    const updated: FilterState = {
+      groups: urlState.filter.groups
+        .map((g) => {
+          if (g.id !== groupId) return g;
+          return {
+            ...g,
+            conditions: g.conditions.filter((c) => c.id !== conditionId),
+          };
+        })
+        .filter((g) => g.conditions.length > 0 || urlState.filter.groups.length === 1),
+    };
+    syncToUrl({ filter: updated });
   };
 
-  // Filtered & Sorted orders
+  const handleResetAllFilters = () => {
+    setColumnFilters({});
+    syncToUrl({ filter: { groups: [] } });
+  };
+
+  // Live filter evaluation pipeline
   const processedOrders = useMemo(() => {
     let result = orders;
 
-    // Apply column quick filters
-    const filterKeys = Object.keys(columnFilters);
+    // 1. Apply Compound Query Builder Filters (Phase 5 AST)
+    if (deferredFilterState.groups.length > 0) {
+      result = applyFilter(result, deferredFilterState);
+    }
+
+    // 2. Apply In-Header Quick Filters
+    const filterKeys = Object.keys(deferredColumnFilters);
     if (filterKeys.length > 0) {
       result = result.filter((order) => {
         return filterKeys.every((key) => {
-          const filterVal = columnFilters[key].toLowerCase();
+          const filterVal = deferredColumnFilters[key].toLowerCase();
           const orderVal = String((order as unknown as Record<string, unknown>)[key] ?? '').toLowerCase();
           return orderVal.includes(filterVal);
         });
       });
     }
 
-    // Apply sorting
+    // 3. Apply Sorting
     if (urlState.sort.field && urlState.sort.direction) {
       result = sortOrders(result, urlState.sort);
     }
 
     return result;
-  }, [orders, columnFilters, urlState.sort]);
+  }, [orders, deferredFilterState, deferredColumnFilters, urlState.sort]);
 
   const handleSortChange = (newSort: typeof urlState.sort) => {
     syncToUrl({ sort: newSort });
@@ -114,7 +147,11 @@ export const App: React.FC = () => {
     );
   }
 
-  const activeFiltersCount = Object.keys(columnFilters).length;
+  const activeBuilderConditions = urlState.filter.groups.reduce(
+    (sum, g) => sum + g.conditions.length,
+    0
+  );
+  const totalActiveFilters = activeBuilderConditions + Object.keys(columnFilters).length;
 
   return (
     <div className="flex h-screen w-screen flex-col bg-neutral-950 text-neutral-100 overflow-hidden font-sans select-none">
@@ -149,13 +186,13 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {activeFiltersCount > 0 && (
+          {totalActiveFilters > 0 && (
             <button
-              onClick={handleResetFilters}
+              onClick={handleResetAllFilters}
               className="flex items-center gap-1.5 rounded-md border border-neutral-800 bg-neutral-900 px-2.5 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800 hover:text-white transition"
             >
               <FilterX className="h-3.5 w-3.5" />
-              Reset Filters
+              Reset All Filters
             </button>
           )}
 
@@ -204,23 +241,20 @@ export const App: React.FC = () => {
 
       {/* Main Workspace matching Wireframe */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar: Filter Grid */}
-        <aside className="w-80 border-r border-neutral-800 bg-neutral-900/40 p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-neutral-400">
-            <span>Filter Grid</span>
-            {activeFiltersCount > 0 && (
-              <span className="text-[10px] text-blue-400 font-normal">
-                {activeFiltersCount} active
-              </span>
-            )}
-          </div>
-          <div className="rounded-lg border border-dashed border-neutral-800 p-4 text-center text-xs text-neutral-500">
-            Complex query builder with compound AND/OR groups will be linked in Phase 5
-          </div>
+        {/* Left Sidebar: Filter Grid (Query Builder) */}
+        <aside className="w-80 border-r border-neutral-800 bg-neutral-900/40 p-4 flex flex-col gap-3 overflow-hidden">
+          <FilterBuilder filterState={urlState.filter} onChange={handleFilterChange} />
         </aside>
 
-        {/* Right Pane: Custom Virtual Data Grid */}
+        {/* Right Pane: Custom Virtual Data Grid + Filter Chips */}
         <main className="flex-1 flex flex-col overflow-hidden bg-neutral-950">
+          {/* Active Filter Chips Bar */}
+          <FilterChips
+            filterState={urlState.filter}
+            onRemoveCondition={handleRemoveCondition}
+            onClearAll={handleResetAllFilters}
+          />
+
           <VirtualGrid
             orders={processedOrders}
             sort={urlState.sort}
@@ -231,7 +265,7 @@ export const App: React.FC = () => {
             onSelectionChange={handleSelectionChange}
             columnFilters={columnFilters}
             onColumnFilterChange={handleColumnFilterChange}
-            onResetFilters={handleResetFilters}
+            onResetFilters={handleResetAllFilters}
           />
         </main>
       </div>
