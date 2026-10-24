@@ -33,19 +33,16 @@ pnpm preview
 
 ## Dependencies
 
-Every runtime dependency added beyond the Vite template:
+Every runtime dependency added beyond the Vite React template:
 
 | Package | Why |
 |---------|-----|
-| `react-router-dom` | URL state sync — filter, sort, pinned column and selection survive refresh and tab copy |
-| `zustand` | Lightweight global store for grid/filter state without Redux boilerplate |
-| `date-fns` | Parses all 4 `createdAt` formats (ISO-TZ, ISO-no-TZ, epoch-seconds, DD/MM/YYYY) reliably |
-| `lucide-react` | Icon pack — sort arrows, close chips, pin icon, export button |
-| `clsx` | Conditional className utility for clean component variants |
-| `tailwindcss` | Utility-first CSS for layout and spacing |
-| `@radix-ui/*` | Accessible headless primitives used by Shadcn components |
+| `lucide-react` | Lightweight icon pack for sorting indicators, pin toggles, filter controls, and action buttons |
+| `clsx` | Utility for constructing conditional className strings |
+| `class-variance-authority` | Type-safe styling variants for UI components (badges, buttons, sheet) |
+| `radix-ui` | Accessible headless primitives for the slide-in order details drawer |
 
-> No table, grid, virtualization, or query-builder library was used. The grid and filter builder are written from scratch.
+> **Zero Phantom Dependencies:** URL synchronization is implemented using native `window.history` and `URLSearchParams` (`useUrlState.ts`). Date parsing across all 4 formats uses a custom zero-dependency parser (`normalize.ts`). State management is handled with standard React hooks (`useState`, `useMemo`, `useCallback`). No table, grid, virtualization, or query-builder library was used.
 
 ---
 
@@ -57,7 +54,7 @@ Every runtime dependency added beyond the Vite template:
 
 All parsing and normalization runs inside a **Web Worker** (`src/workers/data.worker.ts`). This keeps JSON.parse (which takes ~1–2 s for 17 MB) off the main thread so the UI stays responsive during load.
 
-After the worker posts back the normalized array, it is stored once in Zustand. Filtering and sorting are derived with `useMemo` — the source array is never mutated.
+After the worker posts back the normalized array, it is held once in React state (`useOrders`) and cached in IndexedDB. Filtering and sorting are derived with `useMemo` — the source array is never mutated.
 
 ---
 
