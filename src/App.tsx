@@ -72,7 +72,6 @@ export const App: React.FC = () => {
       pinnedColumn: null,
     });
   };
-  const handleResetAllFilters = handleResetAll;
 
   const processedOrders = useMemo(() => {
     let result = orders;
