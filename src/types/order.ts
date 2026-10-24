@@ -47,7 +47,7 @@ export interface NormalizedOrder {
   region: OrderRegion;
   channel: OrderChannel;
   priority: PriorityLevel; // 1, 2, 3 or null (None)
-  priorityLabel: 'High' | 'Medium' | 'Low' | 'None';
+  priorityLabel: '1' | '2' | '3' | 'None'; // Same values the grid shows
   paymentMethod: PaymentMethod;
   itemCount: number;
   notes: string; // Plain text escaped, safe

@@ -19,7 +19,7 @@ import { useUrlState } from './hooks/useUrlState';
 import type { FilterState } from './types/filter';
 import type { NormalizedOrder } from './types/order';
 import { exportOrders } from './utils/export';
-import { applyFilter } from './utils/filter';
+import { applyFilter, getFieldConfigs } from './utils/filter';
 import { sortOrders } from './utils/sort';
 
 export const App: React.FC = () => {
@@ -33,6 +33,9 @@ export const App: React.FC = () => {
 
   const deferredFilterState = useDeferredValue(urlState.filter);
   const deferredColumnFilters = useDeferredValue(columnFilters);
+
+  // Derive dynamic filter configurations directly from the loaded dataset
+  const fieldConfigs = useMemo(() => getFieldConfigs(orders), [orders]);
 
   const handleFilterChange = (newFilter: FilterState) => {
     syncToUrl({ filter: newFilter });
@@ -300,7 +303,11 @@ export const App: React.FC = () => {
         {/* Left Sidebar: Filters */}
         {isSidebarOpen && (
           <aside className="w-[320px] shrink-0 border-r border-slate-200 bg-slate-100/90 p-4 flex flex-col gap-3 overflow-hidden">
-            <FilterBuilder filterState={urlState.filter} onChange={handleFilterChange} />
+            <FilterBuilder
+              filterState={urlState.filter}
+              onChange={handleFilterChange}
+              fieldConfigs={fieldConfigs}
+            />
           </aside>
         )}
 
@@ -311,10 +318,12 @@ export const App: React.FC = () => {
             filterState={urlState.filter}
             onRemoveCondition={handleRemoveCondition}
             onClearAll={handleResetAll}
+            fieldConfigs={fieldConfigs}
           />
 
           <VirtualGrid
             orders={processedOrders}
+            allOrders={orders}
             sort={urlState.sort}
             onSortChange={handleSortChange}
             pinnedColumn={urlState.pinnedColumn}

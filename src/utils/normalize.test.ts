@@ -122,7 +122,7 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     expect(nullPriority.priority).toBeNull();
     expect(nullPriority.priorityLabel).toBe('None');
     expect(p1.priority).toBe(1);
-    expect(p1.priorityLabel).toBe('High');
+    expect(p1.priorityLabel).toBe('1');
   });
 
   it('Rule 9: Sanitizes HTML tags from notes safely', () => {

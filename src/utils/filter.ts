@@ -1,139 +1,199 @@
 import type { FieldConfig, FilterCondition, FilterGroup, FilterState } from '../types/filter';
 import type { NormalizedOrder } from '../types/order';
 
-export const FIELD_CONFIGS: FieldConfig[] = [
-  {
-    id: 'id',
-    label: 'Order ID',
-    type: 'text',
-    operators: [
-      { label: 'contains', value: 'contains' },
-      { label: 'does not contain', value: 'does_not_contain' },
-      { label: 'equals', value: 'equals' },
-    ],
-  },
-  {
-    id: 'customerName',
-    label: 'Customer Name',
-    type: 'text',
-    operators: [
-      { label: 'contains', value: 'contains' },
-      { label: 'does not contain', value: 'does_not_contain' },
-      { label: 'equals', value: 'equals' },
-    ],
-  },
-  {
-    id: 'customerEmail',
-    label: 'Customer Email',
-    type: 'text',
-    operators: [
-      { label: 'contains', value: 'contains' },
-      { label: 'does not contain', value: 'does_not_contain' },
-      { label: 'equals', value: 'equals' },
-    ],
-  },
-  {
-    id: 'status',
-    label: 'Status',
-    type: 'enum',
-    operators: [
-      { label: 'is one of', value: 'in' },
-      { label: 'is not one of', value: 'not_in' },
-    ],
-    options: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-  },
-  {
-    id: 'amount',
-    label: 'Amount (₹)',
-    type: 'number',
-    operators: [
-      { label: 'equals', value: 'equals' },
-      { label: 'greater than', value: 'greater_than' },
-      { label: 'less than', value: 'less_than' },
-      { label: 'between', value: 'between' },
-    ],
-  },
-  {
-    id: 'createdAt',
-    label: 'Created Date',
-    type: 'date',
-    operators: [
-      { label: 'before', value: 'before' },
-      { label: 'after', value: 'after' },
-      { label: 'between', value: 'between' },
-    ],
-  },
-  {
-    id: 'updatedAt',
-    label: 'Updated Date',
-    type: 'date',
-    operators: [
-      { label: 'before', value: 'before' },
-      { label: 'after', value: 'after' },
-      { label: 'between', value: 'between' },
-    ],
-  },
-  {
-    id: 'region',
-    label: 'Region',
-    type: 'enum',
-    operators: [
-      { label: 'is one of', value: 'in' },
-      { label: 'is not one of', value: 'not_in' },
-    ],
-    options: ['NORTH', 'SOUTH', 'EAST', 'WEST', 'CENTRAL', 'NORTHEAST'],
-  },
-  {
-    id: 'channel',
-    label: 'Channel',
-    type: 'enum',
-    operators: [
-      { label: 'is one of', value: 'in' },
-      { label: 'is not one of', value: 'not_in' },
-    ],
-    options: ['web', 'app', 'phone', 'store'],
-  },
-  {
-    id: 'paymentMethod',
-    label: 'Payment Method',
-    type: 'enum',
-    operators: [
-      { label: 'is one of', value: 'in' },
-      { label: 'is not one of', value: 'not_in' },
-    ],
-    options: ['upi', 'card', 'netbanking', 'cod', 'wallet'],
-  },
-  {
-    id: 'priorityLabel',
-    label: 'Priority',
-    type: 'enum',
-    operators: [
-      { label: 'is one of', value: 'in' },
-      { label: 'is not one of', value: 'not_in' },
-    ],
-    options: ['High', 'Medium', 'Low', 'None'],
-  },
-  {
-    id: 'itemCount',
-    label: 'Item Count',
-    type: 'number',
-    operators: [
-      { label: 'equals', value: 'equals' },
-      { label: 'greater than', value: 'greater_than' },
-      { label: 'less than', value: 'less_than' },
-      { label: 'between', value: 'between' },
-    ],
-  },
-  {
-    id: 'notes',
-    label: 'Notes',
-    type: 'text',
-    operators: [
-      { label: 'contains', value: 'contains' },
-      { label: 'does not contain', value: 'does_not_contain' },
-    ],
-  },
-];
+export interface DynamicEnumOptions {
+  status: string[];
+  region: string[];
+  channel: string[];
+  paymentMethod: string[];
+  priorityLabel: string[];
+}
+
+export const DEFAULT_ENUM_OPTIONS: DynamicEnumOptions = {
+  status: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
+  region: ['NORTH', 'SOUTH', 'EAST', 'WEST', 'CENTRAL', 'NORTHEAST'],
+  channel: ['web', 'app', 'phone', 'store'],
+  paymentMethod: ['upi', 'card', 'netbanking', 'cod', 'wallet'],
+  priorityLabel: ['1', '2', '3', 'None'],
+};
+
+/**
+ * Dynamically derives unique enum options from order dataset.
+ * Guarantees enum filter choices reflect actual dataset values without drifting.
+ */
+export function extractEnumOptions(orders: NormalizedOrder[]): DynamicEnumOptions {
+  const statusSet = new Set<string>();
+  const regionSet = new Set<string>();
+  const channelSet = new Set<string>();
+  const paymentSet = new Set<string>();
+  const prioritySet = new Set<string>();
+
+  for (let i = 0; i < orders.length; i++) {
+    const o = orders[i];
+    if (o.status) statusSet.add(String(o.status));
+    if (o.region) regionSet.add(String(o.region));
+    if (o.channel) channelSet.add(String(o.channel));
+    if (o.paymentMethod) paymentSet.add(String(o.paymentMethod));
+    if (o.priorityLabel) prioritySet.add(String(o.priorityLabel));
+  }
+
+  const priorityOrder: Record<string, number> = { '1': 1, '2': 2, '3': 3, None: 4 };
+
+  return {
+    status: statusSet.size > 0 ? Array.from(statusSet).sort() : DEFAULT_ENUM_OPTIONS.status,
+    region: regionSet.size > 0 ? Array.from(regionSet).sort() : DEFAULT_ENUM_OPTIONS.region,
+    channel: channelSet.size > 0 ? Array.from(channelSet).sort() : DEFAULT_ENUM_OPTIONS.channel,
+    paymentMethod: paymentSet.size > 0 ? Array.from(paymentSet).sort() : DEFAULT_ENUM_OPTIONS.paymentMethod,
+    priorityLabel: prioritySet.size > 0
+      ? Array.from(prioritySet).sort((a, b) => (priorityOrder[a] ?? 99) - (priorityOrder[b] ?? 99) || a.localeCompare(b))
+      : DEFAULT_ENUM_OPTIONS.priorityLabel,
+  };
+}
+
+/**
+ * Returns field configurations with dynamic enum options derived from orders.
+ */
+export function getFieldConfigs(orders?: NormalizedOrder[]): FieldConfig[] {
+  const enumOptions = orders && orders.length > 0
+    ? extractEnumOptions(orders)
+    : DEFAULT_ENUM_OPTIONS;
+
+  return [
+    {
+      id: 'id',
+      label: 'Order ID',
+      type: 'text',
+      operators: [
+        { label: 'contains', value: 'contains' },
+        { label: 'does not contain', value: 'does_not_contain' },
+        { label: 'equals', value: 'equals' },
+      ],
+    },
+    {
+      id: 'customerName',
+      label: 'Customer Name',
+      type: 'text',
+      operators: [
+        { label: 'contains', value: 'contains' },
+        { label: 'does not contain', value: 'does_not_contain' },
+        { label: 'equals', value: 'equals' },
+      ],
+    },
+    {
+      id: 'customerEmail',
+      label: 'Customer Email',
+      type: 'text',
+      operators: [
+        { label: 'contains', value: 'contains' },
+        { label: 'does not contain', value: 'does_not_contain' },
+        { label: 'equals', value: 'equals' },
+      ],
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      type: 'enum',
+      operators: [
+        { label: 'is one of', value: 'in' },
+        { label: 'is not one of', value: 'not_in' },
+      ],
+      options: enumOptions.status,
+    },
+    {
+      id: 'amount',
+      label: 'Amount (₹)',
+      type: 'number',
+      operators: [
+        { label: 'equals', value: 'equals' },
+        { label: 'greater than', value: 'greater_than' },
+        { label: 'less than', value: 'less_than' },
+        { label: 'between', value: 'between' },
+      ],
+    },
+    {
+      id: 'createdAt',
+      label: 'Created Date',
+      type: 'date',
+      operators: [
+        { label: 'before', value: 'before' },
+        { label: 'after', value: 'after' },
+        { label: 'between', value: 'between' },
+      ],
+    },
+    {
+      id: 'updatedAt',
+      label: 'Updated Date',
+      type: 'date',
+      operators: [
+        { label: 'before', value: 'before' },
+        { label: 'after', value: 'after' },
+        { label: 'between', value: 'between' },
+      ],
+    },
+    {
+      id: 'region',
+      label: 'Region',
+      type: 'enum',
+      operators: [
+        { label: 'is one of', value: 'in' },
+        { label: 'is not one of', value: 'not_in' },
+      ],
+      options: enumOptions.region,
+    },
+    {
+      id: 'channel',
+      label: 'Channel',
+      type: 'enum',
+      operators: [
+        { label: 'is one of', value: 'in' },
+        { label: 'is not one of', value: 'not_in' },
+      ],
+      options: enumOptions.channel,
+    },
+    {
+      id: 'paymentMethod',
+      label: 'Payment Method',
+      type: 'enum',
+      operators: [
+        { label: 'is one of', value: 'in' },
+        { label: 'is not one of', value: 'not_in' },
+      ],
+      options: enumOptions.paymentMethod,
+    },
+    {
+      id: 'priorityLabel',
+      label: 'Priority',
+      type: 'enum',
+      operators: [
+        { label: 'is one of', value: 'in' },
+        { label: 'is not one of', value: 'not_in' },
+      ],
+      options: enumOptions.priorityLabel,
+    },
+    {
+      id: 'itemCount',
+      label: 'Item Count',
+      type: 'number',
+      operators: [
+        { label: 'equals', value: 'equals' },
+        { label: 'greater than', value: 'greater_than' },
+        { label: 'less than', value: 'less_than' },
+        { label: 'between', value: 'between' },
+      ],
+    },
+    {
+      id: 'notes',
+      label: 'Notes',
+      type: 'text',
+      operators: [
+        { label: 'contains', value: 'contains' },
+        { label: 'does not contain', value: 'does_not_contain' },
+      ],
+    },
+  ];
+}
+
+export const FIELD_CONFIGS: FieldConfig[] = getFieldConfigs();
 
 /**
  * Evaluates a single filter condition against a record.

@@ -33,7 +33,7 @@ const ALL_COLUMNS: Omit<GridColumn, 'width'>[] = [
   { id: 'notes', header: 'Notes', align: 'center', sortable: true, type: 'string' },
 ];
 
-const COLUMN_ENUM_OPTIONS: Partial<Record<keyof NormalizedOrder, { label: string; value: string }[]>> = {
+const DEFAULT_COLUMN_ENUM_OPTIONS: Partial<Record<keyof NormalizedOrder, { label: string; value: string }[]>> = {
   status: [
     { label: 'All Statuses', value: '' },
     { label: 'Delivered', value: 'delivered' },
@@ -77,6 +77,7 @@ const COLUMN_ENUM_OPTIONS: Partial<Record<keyof NormalizedOrder, { label: string
 
 interface VirtualGridProps {
   orders: NormalizedOrder[];
+  allOrders?: NormalizedOrder[];
   sort: SortState;
   onSortChange: (sort: SortState) => void;
   pinnedColumn: keyof NormalizedOrder | null;
@@ -90,6 +91,7 @@ interface VirtualGridProps {
 
 export const VirtualGrid: React.FC<VirtualGridProps> = ({
   orders,
+  allOrders,
   sort,
   onSortChange,
   pinnedColumn,
@@ -103,6 +105,62 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(600);
+
+  const columnEnumOptions = useMemo(() => {
+    const dataSource = allOrders && allOrders.length > 0 ? allOrders : orders;
+    if (!dataSource || dataSource.length === 0) {
+      return DEFAULT_COLUMN_ENUM_OPTIONS;
+    }
+
+    const statusSet = new Set<string>();
+    const channelSet = new Set<string>();
+    const regionSet = new Set<string>();
+    const paymentSet = new Set<string>();
+    const prioritySet = new Set<string>();
+
+    for (let i = 0; i < dataSource.length; i++) {
+      const o = dataSource[i];
+      if (o.status) statusSet.add(String(o.status));
+      if (o.channel) channelSet.add(String(o.channel));
+      if (o.region) regionSet.add(String(o.region));
+      if (o.paymentMethod) paymentSet.add(String(o.paymentMethod));
+      if (o.priority !== undefined && o.priority !== null) {
+        prioritySet.add(String(o.priority));
+      }
+    }
+
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    return {
+      status: [
+        { label: 'All Statuses', value: '' },
+        ...Array.from(statusSet).sort().map((v) => ({ label: capitalize(v), value: v })),
+      ],
+      channel: [
+        { label: 'All Channels', value: '' },
+        ...Array.from(channelSet).sort().map((v) => ({ label: capitalize(v), value: v })),
+      ],
+      region: [
+        { label: 'All Regions', value: '' },
+        ...Array.from(regionSet).sort().map((v) => ({ label: v.toUpperCase(), value: v })),
+      ],
+      paymentMethod: [
+        { label: 'All Payments', value: '' },
+        ...Array.from(paymentSet).sort().map((v) => ({
+          label: ['upi', 'cod'].includes(v.toLowerCase()) ? v.toUpperCase() : capitalize(v),
+          value: v,
+        })),
+      ],
+      priority: [
+        { label: 'All Priorities', value: '' },
+        ...Array.from(prioritySet).sort().map((v) => ({
+          label: v === '1' ? '1 (Highest)' : v === '3' ? '3 (Lowest)' : v,
+          value: v,
+        })),
+        { label: 'None', value: 'none' },
+      ],
+    };
+  }, [allOrders, orders]);
 
   // Calibrated column widths: exactly 6 columns fit on a 13-inch display (1280px) without any cut column!
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
@@ -534,13 +592,13 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                 {/* Column Quick Filter Input / Dropdown */}
                 {onColumnFilterChange && (
                   <div className="mt-1.5 flex items-center justify-center rounded border border-slate-300 bg-white px-1.5 py-0.5 shadow-2xs">
-                    {COLUMN_ENUM_OPTIONS[col.id] ? (
+                    {columnEnumOptions[col.id] ? (
                       <select
                         value={columnFilters[col.id] || ''}
                         onChange={(e) => onColumnFilterChange(col.id, e.target.value)}
                         className="w-full bg-transparent text-[11px] text-slate-800 text-center focus:outline-none cursor-pointer truncate"
                       >
-                        {COLUMN_ENUM_OPTIONS[col.id]?.map((opt) => (
+                        {columnEnumOptions[col.id]?.map((opt) => (
                           <option key={opt.value} value={opt.value}>
                             {opt.label}
                           </option>

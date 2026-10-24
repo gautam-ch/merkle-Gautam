@@ -13,16 +13,23 @@ import { FIELD_CONFIGS } from '../../utils/filter';
 interface FilterBuilderProps {
   filterState: FilterState;
   onChange: (newState: FilterState) => void;
+  fieldConfigs?: FieldConfig[];
 }
 
-export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onChange }) => {
+export const FilterBuilder: React.FC<FilterBuilderProps> = ({
+  filterState,
+  onChange,
+  fieldConfigs = FIELD_CONFIGS,
+}) => {
   const handleAddCondition = (groupId?: string) => {
     const targetGroupId = groupId ?? filterState.groups[0]?.id;
+    const statusConfig = fieldConfigs.find((f) => f.id === 'status');
+    const defaultStatusVal = statusConfig?.options?.[0] ? [statusConfig.options[0]] : ['delivered'];
     const newCondition: FilterCondition = {
       id: `cond_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       field: 'status',
       operator: 'in',
-      value: ['delivered'],
+      value: defaultStatusVal,
     };
 
     if (!targetGroupId || filterState.groups.length === 0) {
@@ -92,7 +99,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
             if (c.id !== conditionId) return c;
 
             if (updates.field && updates.field !== c.field) {
-              const newConfig = FIELD_CONFIGS.find((f) => f.id === updates.field);
+              const newConfig = fieldConfigs.find((f) => f.id === updates.field);
               const defaultOp = newConfig?.operators[0]?.value ?? 'contains';
               let defaultValue: unknown = '';
               if (newConfig?.type === 'enum') {
@@ -188,7 +195,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
               {/* Conditions List */}
               <div className="space-y-2.5">
                 {group.conditions.map((condition) => {
-                  const fieldConfig = FIELD_CONFIGS.find((f) => f.id === condition.field);
+                  const fieldConfig = fieldConfigs.find((f) => f.id === condition.field);
 
                   return (
                     <div
@@ -218,7 +225,7 @@ export const FilterBuilder: React.FC<FilterBuilderProps> = ({ filterState, onCha
                           }
                           className="w-full min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 shadow-xs focus:outline-none focus:ring-1 focus:ring-blue-500 truncate"
                         >
-                          {FIELD_CONFIGS.map((f) => (
+                          {fieldConfigs.map((f) => (
                             <option key={f.id} value={f.id}>
                               {f.label}
                             </option>

@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { FilterState } from '../types/filter';
 import type { NormalizedOrder } from '../types/order';
-import { applyFilter, deserializeFilter, evaluateCondition, serializeFilter } from './filter';
+import {
+  applyFilter,
+  DEFAULT_ENUM_OPTIONS,
+  deserializeFilter,
+  evaluateCondition,
+  extractEnumOptions,
+  getFieldConfigs,
+  serializeFilter,
+} from './filter';
 
 describe('Filter Engine (Phase 5 AST & Evaluation)', () => {
   const sampleOrder: NormalizedOrder = {
@@ -20,7 +28,7 @@ describe('Filter Engine (Phase 5 AST & Evaluation)', () => {
     region: 'EAST',
     channel: 'app',
     priority: 1,
-    priorityLabel: 'High',
+    priorityLabel: '1',
     paymentMethod: 'upi',
     itemCount: 3,
     notes: 'Please call before delivery',
@@ -173,5 +181,64 @@ describe('Filter Engine (Phase 5 AST & Evaluation)', () => {
     // Bad/malformed inputs must return null without crashing
     expect(deserializeFilter('invalid-base-64-junk')).toBeNull();
     expect(deserializeFilter(null)).toBeNull();
+  });
+
+  it('extracts unique sorted enum options dynamically from orders data (Phase 4 requirement)', () => {
+    const customOrders: NormalizedOrder[] = [
+      {
+        ...sampleOrder,
+        id: 'O1',
+        status: 'refunded' as NormalizedOrder['status'],
+        channel: 'whatsapp' as NormalizedOrder['channel'],
+        region: 'SOUTH',
+        paymentMethod: 'wallet',
+        priorityLabel: 'None',
+      },
+      {
+        ...sampleOrder,
+        id: 'O2',
+        status: 'returned' as NormalizedOrder['status'],
+        channel: 'app',
+        region: 'NORTH',
+        paymentMethod: 'upi',
+        priorityLabel: '1',
+      },
+      {
+        ...sampleOrder,
+        id: 'O3',
+        status: 'refunded' as NormalizedOrder['status'],
+        channel: 'whatsapp' as NormalizedOrder['channel'],
+        region: 'SOUTH',
+        paymentMethod: 'upi',
+        priorityLabel: '2',
+      },
+    ];
+
+    const options = extractEnumOptions(customOrders);
+    expect(options.status).toEqual(['refunded', 'returned']);
+    expect(options.channel).toEqual(['app', 'whatsapp']);
+    expect(options.region).toEqual(['NORTH', 'SOUTH']);
+    expect(options.paymentMethod).toEqual(['upi', 'wallet']);
+    expect(options.priorityLabel).toEqual(['1', '2', 'None']);
+  });
+
+  it('populates field configurations with dynamic enum options from dataset', () => {
+    const customOrders: NormalizedOrder[] = [
+      {
+        ...sampleOrder,
+        id: 'O1',
+        status: 'exchange_requested' as NormalizedOrder['status'],
+      },
+    ];
+
+    const configs = getFieldConfigs(customOrders);
+    const statusConfig = configs.find((c) => c.id === 'status');
+    expect(statusConfig?.options).toEqual(['exchange_requested']);
+  });
+
+  it('falls back to default enum options when order array is empty', () => {
+    const configs = getFieldConfigs([]);
+    const statusConfig = configs.find((c) => c.id === 'status');
+    expect(statusConfig?.options).toEqual(DEFAULT_ENUM_OPTIONS.status);
   });
 });

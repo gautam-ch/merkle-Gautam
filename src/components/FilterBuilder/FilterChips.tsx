@@ -1,18 +1,20 @@
 import { FilterX, X } from 'lucide-react';
 import React from 'react';
-import type { FilterState } from '../../types/filter';
+import type { FieldConfig, FilterState } from '../../types/filter';
 import { FIELD_CONFIGS } from '../../utils/filter';
 
 interface FilterChipsProps {
   filterState: FilterState;
   onRemoveCondition: (groupId: string, conditionId: string) => void;
   onClearAll: () => void;
+  fieldConfigs?: FieldConfig[];
 }
 
 export const FilterChips: React.FC<FilterChipsProps> = ({
   filterState,
   onRemoveCondition,
   onClearAll,
+  fieldConfigs = FIELD_CONFIGS,
 }) => {
   const allConditions = filterState.groups.flatMap((g) =>
     g.conditions.map((c) => ({
@@ -26,7 +28,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
   }
 
   const formatChipLabel = (cond: typeof allConditions[0]['condition']) => {
-    const config = FIELD_CONFIGS.find((f) => f.id === cond.field);
+    const config = fieldConfigs.find((f) => f.id === cond.field);
     const fieldLabel = config?.label ?? String(cond.field);
     const opLabel = config?.operators.find((o) => o.value === cond.operator)?.label ?? cond.operator;
 

@@ -95,7 +95,7 @@ export const RowDetailSheet: React.FC<RowDetailSheetProps> = ({
             <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
               <div className="text-xs text-slate-500 font-medium">Priority & Payment</div>
               <div className="text-base font-semibold text-slate-900 mt-1">
-                {order.priorityLabel} Priority
+                Priority {order.priorityLabel}
               </div>
               <div className="text-[10px] text-slate-500 uppercase font-mono mt-0.5 flex items-center gap-1">
                 <CreditCard className="h-3 w-3" />

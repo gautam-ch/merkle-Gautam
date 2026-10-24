@@ -1,7 +1,9 @@
 import type { NormalizedOrder } from '../types/order';
 
 const DB_NAME = 'OrdersExplorerDB';
-const DB_VERSION = 1;
+// Bump whenever the NormalizedOrder shape or normalization rules change,
+// so browsers drop orders cached by an older build.
+const DB_VERSION = 2;
 const STORE_NAME = 'normalized_orders';
 const CACHE_KEY = 'latest_orders';
 
@@ -16,9 +18,10 @@ function openDatabase(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
+      if (db.objectStoreNames.contains(STORE_NAME)) {
+        db.deleteObjectStore(STORE_NAME);
       }
+      db.createObjectStore(STORE_NAME);
     };
 
     request.onsuccess = () => resolve(request.result);

@@ -128,7 +128,7 @@ export function normalizeOrder(raw: RawOrder, fileIndex: number = 0): Normalized
   // Rule 8: Priority is sometimes missing -> None
   const rawPriority = raw.priority !== undefined && raw.priority !== null ? Number(raw.priority) : null;
   const priority: PriorityLevel = rawPriority === 1 || rawPriority === 2 || rawPriority === 3 ? rawPriority : null;
-  const priorityLabel = priority === 1 ? 'High' : priority === 2 ? 'Medium' : priority === 3 ? 'Low' : 'None';
+  const priorityLabel = priority === 1 ? '1' : priority === 2 ? '2' : priority === 3 ? '3' : 'None';
 
   // Rule 9: Notes plain text, no HTML
   const notes = sanitizeNotes(raw.notes);
