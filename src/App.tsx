@@ -130,15 +130,25 @@ export const App: React.FC = () => {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const selectedMatchingOrders = useMemo(() => {
+    if (urlState.selectedIds.size === 0) return [];
+    return processedOrders.filter((o) => urlState.selectedIds.has(o.id));
+  }, [processedOrders, urlState.selectedIds]);
+
   const targetExportOrders = useMemo(() => {
     if (urlState.selectedIds.size > 0) {
-      const matching = processedOrders.filter((o) => urlState.selectedIds.has(o.id));
-      return matching.length > 0 ? matching : orders.filter((o) => urlState.selectedIds.has(o.id));
+      return selectedMatchingOrders;
     }
     return processedOrders;
-  }, [processedOrders, orders, urlState.selectedIds]);
+  }, [urlState.selectedIds.size, selectedMatchingOrders, processedOrders]);
 
   const handleExport = (format: 'csv' | 'json') => {
+    if (urlState.selectedIds.size > 0 && targetExportOrders.length === 0) {
+      setExportNotice('No selected orders match the current filter to export.');
+      setTimeout(() => setExportNotice(null), 4000);
+      return;
+    }
+
     const res = exportOrders(targetExportOrders, format);
     const label = urlState.selectedIds.size > 0 ? 'selected' : 'matching';
     const notice = `Exported ${res.count.toLocaleString()} ${label} orders as ${format.toUpperCase()}`;
@@ -210,11 +220,13 @@ export const App: React.FC = () => {
           {urlState.selectedIds.size > 0 && (
             <div className="flex items-center gap-2 mr-2">
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-                {urlState.selectedIds.size} selected
+                {selectedMatchingOrders.length === urlState.selectedIds.size
+                  ? `${selectedMatchingOrders.length.toLocaleString()} selected`
+                  : `${selectedMatchingOrders.length.toLocaleString()} of ${urlState.selectedIds.size.toLocaleString()} selected`}
               </span>
               <button
                 onClick={() => handleSelectionChange(new Set())}
-                className="text-xs text-slate-500 hover:text-slate-800 underline"
+                className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
               >
                 Clear
               </button>
