@@ -3,6 +3,7 @@ import type { FilterState } from '../types/filter';
 import type { SortDirection, SortState } from '../types/grid';
 import type { NormalizedOrder } from '../types/order';
 import { deserializeFilter, serializeFilter } from '../utils/filter';
+import { deserializeSelection, serializeSelection } from '../utils/selection';
 
 export interface GridUrlState {
   sort: SortState;
@@ -38,7 +39,7 @@ export function useUrlState() {
           direction: sortDir === 'asc' || sortDir === 'desc' ? sortDir : null,
         },
         pinnedColumn: pin || null,
-        selectedIds: sel ? new Set(sel.split(',').filter(Boolean)) : new Set(),
+        selectedIds: deserializeSelection(sel),
         filter: parsedFilter || { groups: [] },
       };
     } catch {
@@ -77,8 +78,12 @@ export function useUrlState() {
         }
 
         if (merged.selectedIds.size > 0) {
-          const ids = Array.from(merged.selectedIds).slice(0, 20);
-          params.set('sel', ids.join(','));
+          const encoded = serializeSelection(merged.selectedIds);
+          if (encoded) {
+            params.set('sel', encoded);
+          } else {
+            params.delete('sel');
+          }
         } else {
           params.delete('sel');
         }
@@ -119,7 +124,7 @@ export function useUrlState() {
             direction: sortDir === 'asc' || sortDir === 'desc' ? sortDir : null,
           },
           pinnedColumn: pin || null,
-          selectedIds: sel ? new Set(sel.split(',').filter(Boolean)) : new Set(),
+          selectedIds: deserializeSelection(sel),
           filter: deserializeFilter(f) || { groups: [] },
         });
       } catch {
