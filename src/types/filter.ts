@@ -1,9 +1,9 @@
 import type { NormalizedOrder } from './order';
 
-export type TextOperator = 'contains' | 'does_not_contain' | 'equals';
-export type NumberOperator = 'equals' | 'greater_than' | 'less_than' | 'between';
-export type DateOperator = 'before' | 'after' | 'between';
-export type EnumOperator = 'in' | 'not_in';
+type TextOperator = 'contains' | 'does_not_contain' | 'equals';
+type NumberOperator = 'equals' | 'greater_than' | 'less_than' | 'between';
+type DateOperator = 'before' | 'after' | 'between';
+type EnumOperator = 'in' | 'not_in';
 
 export type FilterOperator = TextOperator | NumberOperator | DateOperator | EnumOperator;
 
@@ -14,9 +14,9 @@ export interface FilterCondition {
   value: string | number | [number, number] | string[] | [string, string];
 }
 
+// Conditions inside a group are combined with OR; groups are combined with AND.
 export interface FilterGroup {
   id: string;
-  combinator: 'AND' | 'OR';
   conditions: FilterCondition[];
 }
 

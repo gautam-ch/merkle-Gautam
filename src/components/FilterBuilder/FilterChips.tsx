@@ -1,71 +1,47 @@
 import { FilterX, X } from 'lucide-react';
-import React from 'react';
+import { Fragment } from 'react';
 import type { FieldConfig, FilterState } from '../../types/filter';
-import { FIELD_CONFIGS } from '../../utils/filter';
+import { isConditionEmpty } from '../../utils/filterEdit';
+import { describeCondition } from '../../utils/filterLabel';
 
 interface FilterChipsProps {
   filterState: FilterState;
+  fieldConfigs: FieldConfig[];
   onRemoveCondition: (groupId: string, conditionId: string) => void;
   onClearAll: () => void;
-  fieldConfigs?: FieldConfig[];
 }
 
-export const FilterChips: React.FC<FilterChipsProps> = ({
-  filterState,
-  onRemoveCondition,
-  onClearAll,
-  fieldConfigs = FIELD_CONFIGS,
-}) => {
-  const allConditions = filterState.groups.flatMap((g) =>
-    g.conditions.map((c) => ({
-      groupId: g.id,
-      condition: c,
-    }))
+/** The active rules as small removable chips above the grid, with "or" / "and" showing how they combine. */
+export const FilterChips: React.FC<FilterChipsProps> = ({ filterState, fieldConfigs, onRemoveCondition, onClearAll }) => {
+  // Rules with no value yet match everything, so they get no chip
+  const chips = filterState.groups.flatMap((group) =>
+    group.conditions.filter((condition) => !isConditionEmpty(condition)).map((condition) => ({ groupId: group.id, condition }))
   );
 
-  if (allConditions.length === 0) {
-    return null;
-  }
-
-  const formatChipLabel = (cond: typeof allConditions[0]['condition']) => {
-    const config = fieldConfigs.find((f) => f.id === cond.field);
-    const fieldLabel = config?.label ?? String(cond.field);
-    const opLabel = config?.operators.find((o) => o.value === cond.operator)?.label ?? cond.operator;
-
-    let valStr: string;
-    if (Array.isArray(cond.value)) {
-      if (cond.operator === 'between') {
-        valStr = `${cond.value[0]} - ${cond.value[1]}`;
-      } else {
-        valStr = cond.value.join(', ');
-      }
-    } else {
-      valStr = String(cond.value ?? '');
-    }
-
-    return `${fieldLabel} ${opLabel} ${valStr}`;
-  };
+  if (chips.length === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50/80 px-6 py-2">
-      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-1">
-        Active Filters:
-      </span>
+      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-1">Active Filters:</span>
 
-      {allConditions.map(({ groupId, condition }) => (
-        <span
-          key={condition.id}
-          className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition-colors hover:border-blue-300"
-        >
-          <span className="truncate max-w-xs">{formatChipLabel(condition)}</span>
-          <button
-            onClick={() => onRemoveCondition(groupId, condition.id)}
-            title="Remove this filter"
-            className="rounded p-0.5 text-blue-500 hover:bg-blue-100 hover:text-blue-800 transition"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </span>
+      {chips.map(({ groupId, condition }, index) => (
+        <Fragment key={condition.id}>
+          {index > 0 && (
+            <span className="text-[10px] font-semibold uppercase text-slate-400">
+              {chips[index - 1].groupId === groupId ? 'or' : 'and'}
+            </span>
+          )}
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 transition-colors hover:border-blue-300">
+            <span className="truncate max-w-xs">{describeCondition(condition, fieldConfigs)}</span>
+            <button
+              onClick={() => onRemoveCondition(groupId, condition.id)}
+              title="Remove this filter"
+              className="rounded p-0.5 text-blue-500 hover:bg-blue-100 hover:text-blue-800 transition"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        </Fragment>
       ))}
 
       <button
