@@ -32,7 +32,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
     const fieldLabel = config?.label ?? String(cond.field);
     const opLabel = config?.operators.find((o) => o.value === cond.operator)?.label ?? cond.operator;
 
-    let valStr = '';
+    let valStr: string;
     if (Array.isArray(cond.value)) {
       if (cond.operator === 'between') {
         valStr = `${cond.value[0]} - ${cond.value[1]}`;
