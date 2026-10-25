@@ -49,17 +49,25 @@ export function exportOrders(
       escapeCsv(o.notes),
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    // BOM so Excel on Windows reads the file as UTF-8 (₹, non-ASCII names)
+    const csvContent = '﻿' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     downloadFile(csvContent, 'orders_export.csv', 'text/csv;charset=utf-8;');
   }
 
   return { count: exportData.length, truncated };
 }
 
-function escapeCsv(str: string | null | undefined): string {
+/**
+ * Quotes a text field for CSV. Values starting with a formula trigger
+ * (=, +, -, @, tab, CR) get a leading ' so spreadsheets show them as text.
+ */
+export function escapeCsv(str: string | null | undefined): string {
   if (!str) return '""';
-  const escaped = String(str).replace(/"/g, '""');
-  return `"${escaped}"`;
+  let value = String(str);
+  if (/^[=+\-@\t\r]/.test(value)) {
+    value = `'${value}`;
+  }
+  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function downloadFile(content: string, filename: string, mimeType: string) {
