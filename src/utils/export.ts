@@ -1,19 +1,11 @@
 import type { NormalizedOrder } from '../types/order';
 
 /**
- * Exports current orders to CSV or JSON format.
- * If limit is provided, caps export at limit; otherwise exports all targets.
+ * Downloads the given orders as a CSV or JSON file.
  */
-export function exportOrders(
-  orders: NormalizedOrder[],
-  format: 'csv' | 'json',
-  limit?: number
-): { count: number; truncated: boolean } {
-  const exportData = limit ? orders.slice(0, limit) : orders;
-  const truncated = limit ? orders.length > limit : false;
-
+export function exportOrders(orders: NormalizedOrder[], format: 'csv' | 'json'): { count: number } {
   if (format === 'json') {
-    const jsonStr = JSON.stringify(exportData, null, 2);
+    const jsonStr = JSON.stringify(orders, null, 2);
     downloadFile(jsonStr, 'orders_export.json', 'application/json');
   } else {
     // Generate CSV
@@ -33,7 +25,7 @@ export function exportOrders(
       'Notes',
     ];
 
-    const rows = exportData.map((o) => [
+    const rows = orders.map((o) => [
       escapeCsv(o.id),
       escapeCsv(o.customerName),
       escapeCsv(o.customerEmail),
@@ -50,11 +42,11 @@ export function exportOrders(
     ]);
 
     // BOM so Excel on Windows reads the file as UTF-8 (₹, non-ASCII names)
-    const csvContent = '﻿' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     downloadFile(csvContent, 'orders_export.csv', 'text/csv;charset=utf-8;');
   }
 
-  return { count: exportData.length, truncated };
+  return { count: orders.length };
 }
 
 /**
