@@ -9,7 +9,7 @@ import {
   Square,
   XCircle,
 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CellPosition, GridColumn, SortState } from '../../types/grid';
 import type { NormalizedOrder } from '../../types/order';
 import { RowDetailSheet } from './RowDetailSheet';
@@ -22,12 +22,12 @@ const ALL_COLUMNS: Omit<GridColumn, 'width'>[] = [
   { id: 'customerName', header: 'Customer', align: 'center', sortable: true, type: 'string' },
   { id: 'customerEmail', header: 'Customer Email', align: 'center', sortable: true, type: 'string' },
   { id: 'status', header: 'Status', align: 'center', sortable: true, type: 'badge' },
-  { id: 'amount', header: 'Amount', align: 'center', sortable: true, type: 'number' },
+  { id: 'amount', header: 'Amount', align: 'right', sortable: true, type: 'number' },
   { id: 'createdAt', header: 'Created At', align: 'center', sortable: true, type: 'date' },
   { id: 'updatedAt', header: 'Updated At', align: 'center', sortable: true, type: 'date' },
   { id: 'priority', header: 'Priority', align: 'center', sortable: true, type: 'badge' },
   { id: 'paymentMethod', header: 'Payment Method', align: 'center', sortable: true, type: 'string' },
-  { id: 'itemCount', header: 'Items', align: 'center', sortable: true, type: 'number' },
+  { id: 'itemCount', header: 'Items', align: 'right', sortable: true, type: 'number' },
   { id: 'region', header: 'Region', align: 'center', sortable: true, type: 'string' },
   { id: 'channel', header: 'Channel', align: 'center', sortable: true, type: 'string' },
   { id: 'notes', header: 'Notes', align: 'center', sortable: true, type: 'string' },
@@ -211,13 +211,23 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Compute columns
+  // Compute columns. The pinned column moves to the front so it stays visible
+  // even when it was pinned from the far right of the grid.
   const columns: GridColumn[] = useMemo(() => {
-    return ALL_COLUMNS.map((col) => ({
+    const ordered = pinnedColumn
+      ? [
+          ...ALL_COLUMNS.filter((col) => col.id === pinnedColumn),
+          ...ALL_COLUMNS.filter((col) => col.id !== pinnedColumn),
+        ]
+      : ALL_COLUMNS;
+    return ordered.map((col) => ({
       ...col,
       width: columnWidths[col.id] ?? 140,
     }));
-  }, [columnWidths]);
+  }, [columnWidths, pinnedColumn]);
+
+  const selectWidth = columnWidths.select ?? 48;
+  const hasPinnedColumn = pinnedColumn !== null && columns[0]?.id === pinnedColumn;
 
   const totalGridWidth = useMemo(() => {
     return (columnWidths.select ?? 48) + columns.reduce((acc, col) => acc + col.width, 0);
@@ -367,41 +377,34 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         container.scrollTop = targetTop + ROW_HEIGHT - viewportHeight + 40;
       }
 
-      // 2. Horizontal Auto-Scroll (Keeps focused column in view)
-      const selectWidth = columnWidths.select ?? 48;
-      let targetLeft = 0;
-      let cellWidth = selectWidth;
-
-      if (colIndex === 0) {
-        targetLeft = 0;
-        cellWidth = selectWidth;
-      } else {
+      // 2. Horizontal Auto-Scroll (Keeps focused column in view).
+      // The select and pinned columns are sticky, so they never need scrolling.
+      const isStickyColumn = colIndex === 0 || (hasPinnedColumn && colIndex === 1);
+      if (!isStickyColumn) {
         const precedingWidth = columns
           .slice(0, colIndex - 1)
           .reduce((sum, col) => sum + col.width, 0);
-        targetLeft = selectWidth + precedingWidth;
-        cellWidth = columns[colIndex - 1]?.width ?? 140;
-      }
+        const targetLeft = selectWidth + precedingWidth;
+        const targetRight = targetLeft + (columns[colIndex - 1]?.width ?? 140);
+        const stickyWidth = selectWidth + (hasPinnedColumn ? columns[0].width : 0);
 
-      const targetRight = targetLeft + cellWidth;
-      const visibleLeft = container.scrollLeft;
-      const visibleRight = container.scrollLeft + container.clientWidth;
-      const pinnedMargin = pinnedColumn ? selectWidth + 150 : selectWidth;
-
-      if (targetLeft < visibleLeft + pinnedMargin) {
-        container.scrollLeft = Math.max(0, targetLeft - pinnedMargin);
-      } else if (targetRight > visibleRight) {
-        container.scrollLeft = targetRight - container.clientWidth + 30;
+        if (targetLeft < container.scrollLeft + stickyWidth) {
+          container.scrollLeft = Math.max(0, targetLeft - stickyWidth);
+        } else if (targetRight > container.scrollLeft + container.clientWidth) {
+          container.scrollLeft = targetRight - container.clientWidth + 30;
+        }
       }
     }
   };
 
-  // Stable ref for window keydown delegation
+  // Stable refs for window keydown delegation, refreshed after every commit
   const handleKeyDownRef = useRef(handleKeyDown);
-  handleKeyDownRef.current = handleKeyDown;
-
   const activeDetailOrderRef = useRef(activeDetailOrder);
-  activeDetailOrderRef.current = activeDetailOrder;
+
+  useLayoutEffect(() => {
+    handleKeyDownRef.current = handleKeyDown;
+    activeDetailOrderRef.current = activeDetailOrder;
+  });
 
   useEffect(() => {
     // 1. Auto-focus grid on mount so arrow navigation works immediately without clicking
@@ -508,6 +511,9 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
         onScroll={handleScroll}
         tabIndex={0}
         role="grid"
+        aria-activedescendant={
+          orders.length > 0 ? `cell-${focusedCell.rowIndex}-${focusedCell.colIndex}` : undefined
+        }
         aria-rowcount={orders.length}
         aria-colcount={columns.length + 1}
         className="relative flex-1 overflow-auto focus:outline-none"
@@ -523,8 +529,8 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
           <div
             role="columnheader"
             aria-colindex={1}
-            className="shrink-0 flex items-center justify-center border-r border-slate-200 px-3 py-2.5 bg-slate-50"
-            style={{ width: columnWidths.select }}
+            className="sticky left-0 z-20 shrink-0 flex items-center justify-center border-r border-slate-200 px-3 py-2.5 bg-slate-50"
+            style={{ width: selectWidth }}
           >
             <button
               onClick={toggleSelectAll}
@@ -551,15 +557,17 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                 aria-colindex={cIndex + 2}
                 aria-sort={isSorted ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                 className={`shrink-0 relative flex flex-col justify-between border-r border-slate-200 p-2 text-xs font-semibold text-slate-700 bg-slate-50 transition-colors ${
-                  isPinned ? 'sticky left-12 z-20 bg-slate-100 shadow-md border-r-2 border-r-slate-300' : ''
+                  isPinned ? 'sticky z-20 bg-slate-100 shadow-md border-r-2 border-r-slate-300' : ''
                 }`}
-                style={{ width: col.width }}
+                style={{ width: col.width, left: isPinned ? selectWidth : undefined }}
               >
                 {/* Header Title + Actions */}
                 <div className="flex items-center justify-between gap-1 w-full">
                   <div
                     onClick={() => handleHeaderClick(col)}
-                    className="flex flex-1 items-center justify-center gap-1.5 cursor-pointer hover:text-slate-950 truncate text-center pl-4"
+                    className={`flex flex-1 items-center gap-1.5 cursor-pointer hover:text-slate-950 truncate pl-4 ${
+                      col.align === 'right' ? 'justify-end text-right' : 'justify-center text-center'
+                    }`}
                   >
                     <span className="truncate text-center">{col.header}</span>
                     {col.sortable && (
@@ -690,30 +698,30 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                     onDoubleClick={() => setActiveDetailOrder(order)}
                     className={`flex items-center border-b border-slate-200 text-xs transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-50/80 text-blue-900 font-medium'
+                        ? 'bg-blue-50 text-blue-900 font-medium'
                         : actualIndex % 2 === 0
-                        ? 'bg-white hover:bg-slate-50'
-                        : 'bg-slate-50/40 hover:bg-slate-100/60'
+                        ? 'bg-white hover:bg-slate-100'
+                        : 'bg-slate-50 hover:bg-slate-100'
                     }`}
                     style={{ height: ROW_HEIGHT, width: totalGridWidth }}
                   >
                     {/* Checkbox Cell */}
                     <div
+                      id={`cell-${actualIndex}-0`}
                       role="gridcell"
                       aria-colindex={1}
-                      tabIndex={isRowFocused && focusedCell.colIndex === 0 ? 0 : -1}
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleRowSelection(order.id, actualIndex, e.shiftKey);
                         setFocusedCell({ rowIndex: actualIndex, colIndex: 0 });
                         containerRef.current?.focus();
                       }}
-                      className={`shrink-0 flex items-center justify-center border-r border-slate-200 px-3 h-full ${
+                      className={`sticky left-0 z-10 shrink-0 flex items-center justify-center border-r border-slate-200 px-3 h-full bg-inherit ${
                         isRowFocused && focusedCell.colIndex === 0
-                          ? 'ring-2 ring-blue-600 ring-inset z-10'
+                          ? 'ring-2 ring-blue-600 ring-inset'
                           : ''
                       }`}
-                      style={{ width: columnWidths.select }}
+                      style={{ width: selectWidth }}
                     >
                       {isSelected ? (
                         <CheckSquare className="h-4 w-4 text-blue-600" />
@@ -731,24 +739,28 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                       return (
                         <div
                           key={col.id}
+                          id={`cell-${actualIndex}-${cIndex + 1}`}
                           role="gridcell"
                           aria-colindex={cIndex + 2}
-                          tabIndex={isCellFocused ? 0 : -1}
                           onClick={(e) => {
                             e.stopPropagation();
                             setFocusedCell({ rowIndex: actualIndex, colIndex: cIndex + 1 });
                             containerRef.current?.focus();
                           }}
-                          className={`shrink-0 flex items-center justify-center text-center px-3 h-full border-r border-slate-200 truncate cursor-pointer transition-colors ${
+                          className={`shrink-0 flex items-center px-3 h-full border-r border-slate-200 truncate cursor-pointer transition-colors ${
+                            col.align === 'right' ? 'justify-end text-right' : 'justify-center text-center'
+                          } ${
                             isPinned
-                              ? 'sticky left-12 z-10 bg-inherit shadow-md border-r-2 border-r-slate-300 backdrop-blur-sm'
+                              ? 'sticky z-10 shadow-md border-r-2 border-r-slate-300'
                               : ''
                           } ${
                             isCellFocused
-                              ? 'ring-2 ring-blue-600 ring-inset bg-blue-50/80 text-blue-950 font-semibold z-20'
+                              ? 'ring-2 ring-blue-600 ring-inset bg-blue-100 text-blue-950 font-semibold'
+                              : isPinned
+                              ? 'bg-inherit'
                               : ''
                           }`}
-                          style={{ width: col.width }}
+                          style={{ width: col.width, left: isPinned ? selectWidth : undefined }}
                         >
                           {col.id === 'id' && (
                             <span className="font-mono text-slate-900 font-semibold text-center truncate">
@@ -757,7 +769,7 @@ export const VirtualGrid: React.FC<VirtualGridProps> = ({
                           )}
 
                           {col.id === 'customerName' && (
-                            <span className="truncate text-slate-800 font-medium text-center">
+                            <span className="truncate text-slate-800 font-medium text-center" title={order.customerName}>
                               {order.customerName || 'Anonymous'}
                             </span>
                           )}
