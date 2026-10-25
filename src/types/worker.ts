@@ -1,35 +1,18 @@
 import type { NormalizedOrder } from './order';
 
-export type WorkerProgressStage = 'downloading' | 'parsing' | 'normalizing' | 'deduplicating';
+export type WorkerStage = 'downloading' | 'parsing' | 'normalizing' | 'deduplicating';
 
 export interface WorkerProgressPayload {
-  stage: WorkerProgressStage;
+  stage: WorkerStage;
   message: string;
-  percent?: number;
 }
 
-export type WorkerRequest = {
-  type: 'FETCH_AND_NORMALIZE';
-  payload: {
-    url: string;
-  };
-};
+// The page sends the address of the orders file
+export interface WorkerRequest {
+  url: string;
+}
 
 export type WorkerResponse =
-  | {
-      type: 'PROGRESS';
-      payload: WorkerProgressPayload;
-    }
-  | {
-      type: 'SUCCESS';
-      payload: {
-        orders: NormalizedOrder[];
-        totalCount: number;
-      };
-    }
-  | {
-      type: 'ERROR';
-      payload: {
-        message: string;
-      };
-    };
+  | { type: 'PROGRESS'; payload: WorkerProgressPayload }
+  | { type: 'SUCCESS'; payload: { orders: NormalizedOrder[] } }
+  | { type: 'ERROR'; payload: { message: string } };

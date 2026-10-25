@@ -1,5 +1,3 @@
-export type RawOrderStatus = string;
-export type RawOrderRegion = string;
 
 export interface RawOrder {
   id: string;

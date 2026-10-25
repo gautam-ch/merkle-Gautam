@@ -8,151 +8,99 @@ import type {
   RawOrder,
 } from '../types/order';
 
+// Built once: creating a formatter for each of the 50,000 orders is slow
+const rupees = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });
+
+const ISO_WITHOUT_TIMEZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/;
+const DAY_MONTH_YEAR = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+const EPOCH_SECONDS = /^\d{9,11}$/;
+
 /**
- * Parses raw dates across the 4 specified formats:
- * 1. ISO with TZ: "2025-03-14T09:30:00.000Z"
- * 2. ISO without TZ (treated as UTC): "2025-03-14T09:30:00" -> "2025-03-14T09:30:00Z"
- * 3. Epoch seconds: 1741944600 -> * 1000
- * 4. DD/MM/YYYY: "14/03/2025" -> midnight UTC
+ * Turns a date in any of the four formats in the data into a UTC timestamp
+ * in milliseconds, or null when there is none.
  */
-export function parseDateToTimestamp(rawDate: string | number | null | undefined): number | null {
-  if (rawDate === null || rawDate === undefined || rawDate === '') {
-    return null;
+export function parseDateToTimestamp(raw: string | number | null | undefined): number | null {
+  if (raw === null || raw === undefined || raw === '') return null;
+
+  // Epoch seconds, as a number or as numeric text
+  if (typeof raw === 'number' || EPOCH_SECONDS.test(String(raw).trim())) {
+    const seconds = Number(raw);
+    return seconds < 100_000_000_000 ? seconds * 1000 : seconds;
   }
 
-  // Case 3: Epoch seconds (numeric or numeric string)
-  if (typeof rawDate === 'number' || (/^\d{9,11}$/).test(String(rawDate).trim())) {
-    const num = Number(rawDate);
-    // If epoch seconds (around 10 digits), convert to ms
-    return num < 100_000_000_000 ? num * 1000 : num;
+  const text = String(raw).trim();
+
+  // "14/03/2025" has no time, so it means midnight UTC
+  const dayMonthYear = text.match(DAY_MONTH_YEAR);
+  if (dayMonthYear) {
+    const [, day, month, year] = dayMonthYear.map(Number);
+    return Date.UTC(year, month - 1, day);
   }
 
-  const str = String(rawDate).trim();
+  // ISO without a timezone counts as UTC
+  if (ISO_WITHOUT_TIMEZONE.test(text)) return Date.parse(`${text}Z`);
 
-  // Case 4: DD/MM/YYYY format
-  const ddmmyyyyMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (ddmmyyyyMatch) {
-    const day = parseInt(ddmmyyyyMatch[1], 10);
-    const month = parseInt(ddmmyyyyMatch[2], 10);
-    const year = parseInt(ddmmyyyyMatch[3], 10);
-    return Date.UTC(year, month - 1, day, 0, 0, 0, 0);
-  }
-
-  // Case 2: ISO without timezone -> treat as UTC
-  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(str)) {
-    return Date.parse(`${str}Z`);
-  }
-
-  // Case 1: Standard ISO or other parseable string
-  const parsed = Date.parse(str);
+  const parsed = Date.parse(text);
   return isNaN(parsed) ? null : parsed;
 }
 
-/**
- * Formats epoch timestamp into uniform Indian date representation: DD/MM/YYYY HH:mm:ss
- */
-export function formatOrderDate(timestampMs: number | null): string {
-  if (timestampMs === null || isNaN(timestampMs)) {
-    return '-';
-  }
+/** DD/MM/YYYY HH:mm in UTC, for every date. A missing date shows "-". */
+function formatDate(timestamp: number | null): string {
+  if (timestamp === null || isNaN(timestamp)) return '-';
 
-  const date = new Date(timestampMs);
+  const date = new Date(timestamp);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const day = pad(date.getUTCDate());
-  const month = pad(date.getUTCMonth() + 1);
-  const year = date.getUTCFullYear();
-  const hours = pad(date.getUTCHours());
-  const minutes = pad(date.getUTCMinutes());
-
-  // If time is exactly midnight UTC, we show DD/MM/YYYY for cleaner look
-  if (hours === '00' && minutes === '00') {
-    return `${day}/${month}/${year}`;
-  }
-
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
+  const day = `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}/${date.getUTCFullYear()}`;
+  return `${day} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
 }
 
-/**
- * Formats rupee amount to Indian Currency format: e.g. ₹1,23,456.50
- */
-export function formatCurrencyInr(rupees: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(rupees);
+// Version 1 records store the amount in paise, version 2 in rupees. Some amounts are text.
+function parseAmountInRupees(raw: RawOrder): number {
+  const amount = typeof raw.amount === 'string' ? parseFloat(raw.amount) : Number(raw.amount);
+  if (isNaN(amount)) return 0;
+  return raw.schemaVersion === 1 ? amount / 100 : amount;
 }
 
-/**
- * Sanitizes raw string by stripping HTML tags and escaping entities
- */
-export function sanitizeNotes(notes: string | null | undefined): string {
-  if (!notes) return '';
-  // Strip dangerous HTML tags
-  return notes
-    .replace(/<[^>]*>?/gm, '')
-    .trim();
+function parsePriority(raw: RawOrder): PriorityLevel {
+  const priority = Number(raw.priority);
+  return priority === 1 || priority === 2 || priority === 3 ? priority : null;
 }
 
+const lower = (text: string | undefined) => (text ?? '').toLowerCase().trim();
+
 /**
- * Normalizes a single RawOrder into a clean, typed NormalizedOrder.
- * Satisfies all 10 schema rules defined in data-notes.md.
+ * Cleans one record from the file into the shape the app uses. All the
+ * fixes listed in data-notes.md happen here, before the data reaches the
+ * grid or the filters.
  */
 export function normalizeOrder(raw: RawOrder, fileIndex: number = 0): NormalizedOrder {
-  // Rule 1: customerName (v2) and customer_name (v1)
-  const customerName = (raw.customerName ?? raw.customer_name ?? '').trim();
-
-  // Rule 3: Amount is sometimes a string -> parse to number
-  const rawAmountNum = typeof raw.amount === 'string' ? parseFloat(raw.amount) : Number(raw.amount);
-  const safeAmountNum = isNaN(rawAmountNum) ? 0 : rawAmountNum;
-
-  // Rule 2: Amount unit: v1 paise, v2 rupees -> convert all to rupees
-  const amountRupees = raw.schemaVersion === 1 ? safeAmountNum / 100 : safeAmountNum;
-
-  // Rule 10: Currency trailing space "INR " -> trim
-  const currency = (raw.currency ?? 'INR').trim();
-
-  // Rule 4: Dates come in 4 formats -> normalize to UTC timestamp ms
-  const createdAtMs = parseDateToTimestamp(raw.createdAt) ?? 0;
-
-  // Rule 5: updatedAt is sometimes null or missing -> treat as absent
-  const updatedAtMs = parseDateToTimestamp(raw.updatedAt);
-
-  // Rule 6: Status & region inconsistent casing
-  const status = (raw.status ? raw.status.toLowerCase().trim() : 'pending') as OrderStatus;
-  const region = (raw.region ? raw.region.toUpperCase().trim() : 'NORTH') as OrderRegion;
-  const channel = (raw.channel ? raw.channel.toLowerCase().trim() : 'web') as OrderChannel;
-  const paymentMethod = (raw.paymentMethod ? raw.paymentMethod.toLowerCase().trim() : 'upi') as PaymentMethod;
-
-  // Rule 8: Priority is sometimes missing -> None
-  const rawPriority = raw.priority !== undefined && raw.priority !== null ? Number(raw.priority) : null;
-  const priority: PriorityLevel = rawPriority === 1 || rawPriority === 2 || rawPriority === 3 ? rawPriority : null;
-  const priorityLabel = priority === 1 ? '1' : priority === 2 ? '2' : priority === 3 ? '3' : 'None';
-
-  // Rule 9: Notes plain text, no HTML
-  const notes = sanitizeNotes(raw.notes);
+  const amount = parseAmountInRupees(raw);
+  const createdAt = parseDateToTimestamp(raw.createdAt) ?? 0;
+  const updatedAt = parseDateToTimestamp(raw.updatedAt); // null and missing are treated the same
+  const priority = parsePriority(raw);
 
   return {
     id: String(raw.id).trim(),
     schemaVersion: raw.schemaVersion === 1 ? 1 : 2,
-    customerName,
+    customerName: (raw.customerName ?? raw.customer_name ?? '').trim(), // version 1 uses customer_name
     customerEmail: (raw.customerEmail ?? '').trim(),
-    status,
-    amount: amountRupees,
-    amountFormatted: formatCurrencyInr(amountRupees),
-    currency,
-    createdAt: createdAtMs,
-    createdAtFormatted: formatOrderDate(createdAtMs),
-    updatedAt: updatedAtMs,
-    updatedAtFormatted: formatOrderDate(updatedAtMs),
-    region,
-    channel,
+    status: lower(raw.status) as OrderStatus,
+    amount,
+    amountFormatted: rupees.format(amount),
+    currency: (raw.currency ?? 'INR').trim(), // some values are "INR "
+    createdAt,
+    createdAtFormatted: formatDate(createdAt),
+    updatedAt,
+    updatedAtFormatted: formatDate(updatedAt),
+    region: (raw.region ?? '').toUpperCase().trim() as OrderRegion,
+    channel: lower(raw.channel) as OrderChannel,
     priority,
-    priorityLabel,
-    paymentMethod,
-    itemCount: Number(raw.itemCount) || 1,
-    notes,
+    priorityLabel: priority === null ? 'None' : (String(priority) as NormalizedOrder['priorityLabel']),
+    paymentMethod: lower(raw.paymentMethod) as PaymentMethod,
+    itemCount: Number(raw.itemCount) || 0,
+    // Kept exactly as written. Notes are only ever shown as text, never as HTML,
+    // so tags like <b> appear literally and can't run.
+    notes: (raw.notes ?? '').trim(),
     fileIndex,
   };
 }

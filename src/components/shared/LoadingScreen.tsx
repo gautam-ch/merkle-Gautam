@@ -1,13 +1,21 @@
 import { Loader2 } from 'lucide-react';
-import React from 'react';
-import type { WorkerProgressPayload } from '../../types/worker';
+import type { WorkerProgressPayload, WorkerStage } from '../../types/worker';
 
 interface LoadingScreenProps {
   progress: WorkerProgressPayload | null;
 }
 
+const STEPS: { stage: WorkerStage; label: string }[] = [
+  { stage: 'downloading', label: 'DOWNLOAD' },
+  { stage: 'parsing', label: 'READ' },
+  { stage: 'normalizing', label: 'CLEAN' },
+  { stage: 'deduplicating', label: 'DEDUPE' },
+];
+
+/** Shown while the orders load, with the current step. */
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress }) => {
-  const message = progress?.message ?? 'Initializing Orders Explorer...';
+  const step = STEPS.findIndex((s) => s.stage === progress?.stage);
+  const percent = Math.max(8, ((step + 1) / STEPS.length) * 100); // never an empty bar
 
   return (
     <div className="flex h-screen w-screen flex-col items-center justify-center bg-slate-50 text-slate-800">
@@ -17,42 +25,27 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ progress }) => {
           <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
         </div>
 
-        <h2 className="text-xl font-semibold tracking-tight text-slate-900 mb-1">
-          Orders Explorer
-        </h2>
+        <h2 className="text-xl font-semibold tracking-tight text-slate-900 mb-1">Orders Explorer</h2>
 
         <p className="text-sm text-slate-500 mb-6 min-h-[2.5rem] flex items-center justify-center">
-          {message}
+          {progress?.message ?? 'Starting…'}
         </p>
 
-        {/* Dynamic progress steps indicator */}
         <div className="w-full space-y-2">
           <div className="flex justify-between text-[11px] text-slate-400 font-mono">
-            <span>FETCH</span>
-            <span>PARSE</span>
-            <span>NORMALIZE</span>
-            <span>DEDUP</span>
+            {STEPS.map((s) => (
+              <span key={s.stage}>{s.label}</span>
+            ))}
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className={`h-full bg-blue-600 transition-all duration-300 ease-out ${
-                progress?.stage === 'downloading'
-                  ? 'w-1/4'
-                  : progress?.stage === 'parsing'
-                  ? 'w-2/4'
-                  : progress?.stage === 'normalizing'
-                  ? 'w-3/4'
-                  : progress?.stage === 'deduplicating'
-                  ? 'w-11/12'
-                  : 'w-1/6'
-              }`}
+              className="h-full bg-blue-600 transition-all duration-300 ease-out"
+              style={{ width: `${percent}%` }}
             />
           </div>
         </div>
 
-        <div className="mt-6 text-xs text-slate-400">
-          50,000 records processed entirely in background Web Worker
-        </div>
+        <div className="mt-6 text-xs text-slate-400">The file is processed in the background, so the page stays responsive.</div>
       </div>
     </div>
   );

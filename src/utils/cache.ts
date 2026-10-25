@@ -1,9 +1,12 @@
 import type { NormalizedOrder } from '../types/order';
 
+// Saves the cleaned orders in the browser so later visits skip the download.
+// The cache is optional: if it fails, the orders just load the normal way.
+
 const DB_NAME = 'OrdersExplorerDB';
-// Bump whenever the NormalizedOrder shape or normalization rules change,
-// so browsers drop orders cached by an older build.
-const DB_VERSION = 2;
+// Raise this whenever the order shape or the cleaning rules change,
+// so browsers drop orders saved by an older version.
+const DB_VERSION = 5;
 const STORE_NAME = 'normalized_orders';
 const CACHE_KEY = 'latest_orders';
 
@@ -55,9 +58,9 @@ export async function setCachedOrders(orders: NormalizedOrder[]): Promise<void> 
       const store = tx.objectStore(STORE_NAME);
       store.put(orders, CACHE_KEY);
       tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve(); // Non-blocking failure
+      tx.onerror = () => resolve();
     });
   } catch {
-    // Graceful fallback if indexedDB is disabled
+    // IndexedDB can be blocked (e.g. private browsing)
   }
 }

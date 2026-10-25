@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { RawOrder } from '../types/order';
-import { deduplicateOrders } from './deduplicate';
-import { normalizeOrder, parseDateToTimestamp, sanitizeNotes } from './normalize';
+import { normalizeOrder, parseDateToTimestamp } from './normalize';
 
-describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
-  // Base mock helper
+// The numbers refer to the problem list in data-notes.md
+describe('Cleaning the data', () => {
   const createMockRaw = (overrides: Partial<RawOrder> = {}): RawOrder => ({
     id: 'ORD-0000001',
     schemaVersion: 2,
@@ -24,7 +23,7 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     ...overrides,
   });
 
-  it('Rule 1: Reconciles customer_name (v1) and customerName (v2) to customerName', () => {
+  it('data-notes #1: Reconciles customer_name (v1) and customerName (v2) to customerName', () => {
     const v1 = normalizeOrder(createMockRaw({ schemaVersion: 1, customer_name: 'Rohit Kumar', customerName: undefined }));
     const v2 = normalizeOrder(createMockRaw({ schemaVersion: 2, customerName: 'Priya Patel', customer_name: undefined }));
 
@@ -32,7 +31,7 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     expect(v2.customerName).toBe('Priya Patel');
   });
 
-  it('Rule 2: Normalizes v1 paise to rupees and leaves v2 rupees intact', () => {
+  it('data-notes #2: Normalizes v1 paise to rupees and leaves v2 rupees intact', () => {
     // 50000 paise in v1 -> 500 rupees
     const v1 = normalizeOrder(createMockRaw({ schemaVersion: 1, amount: 50000 }));
     // 500 rupees in v2 -> 500 rupees
@@ -42,12 +41,12 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     expect(v2.amount).toBe(500);
   });
 
-  it('Rule 3: Parses amount when provided as string', () => {
+  it('data-notes #3: Parses amount when provided as string', () => {
     const res = normalizeOrder(createMockRaw({ schemaVersion: 2, amount: '4599.5' as unknown as number }));
     expect(res.amount).toBe(4599.5);
   });
 
-  it('Rule 4: Accurately parses all 4 date formats to UTC timestamps', () => {
+  it('data-notes #4: Accurately parses all 4 date formats to UTC timestamps', () => {
     // Format A: ISO with TZ
     const isoTz = parseDateToTimestamp('2025-03-14T09:30:00.000Z');
     expect(isoTz).toBe(1741944600000);
@@ -65,7 +64,13 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     expect(ddmmyyyy).toBe(Date.UTC(2025, 2, 14, 0, 0, 0));
   });
 
-  it('Rule 5: Handles updatedAt as null, missing, or valid date', () => {
+  it('data-notes #4: Shows every date in one format, including date-only values', () => {
+    expect(normalizeOrder(createMockRaw({ createdAt: '14/03/2025' })).createdAtFormatted).toBe('14/03/2025 00:00');
+    expect(normalizeOrder(createMockRaw({ createdAt: '2025-03-14T09:30:00.000Z' })).createdAtFormatted).toBe('14/03/2025 09:30');
+    expect(normalizeOrder(createMockRaw({ createdAt: 1741944600 })).createdAtFormatted).toBe('14/03/2025 09:30');
+  });
+
+  it('data-notes #5: Handles updatedAt as null, missing, or valid date', () => {
     const nullUpdated = normalizeOrder(createMockRaw({ updatedAt: null }));
     const missingUpdated = normalizeOrder(createMockRaw({ updatedAt: undefined }));
     const validUpdated = normalizeOrder(createMockRaw({ updatedAt: '2025-03-15T10:00:00.000Z' }));
@@ -76,7 +81,7 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     expect(validUpdated.updatedAt).toBe(Date.parse('2025-03-15T10:00:00.000Z'));
   });
 
-  it('Rule 6: Normalizes inconsistent casing in status, region, and channel', () => {
+  it('data-notes #6: Normalizes inconsistent casing in status, region, and channel', () => {
     const mixed = normalizeOrder(createMockRaw({
       status: 'SHIPPED',
       region: 'south',
@@ -88,31 +93,7 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     expect(mixed.channel).toBe('store');
   });
 
-  it('Rule 7: Deduplicates duplicate order IDs accurately based on priority rules', () => {
-    const orderA1 = normalizeOrder(createMockRaw({ id: 'ORD-DUP', updatedAt: '2025-03-10T00:00:00.000Z' }), 0);
-    const orderA2 = normalizeOrder(createMockRaw({ id: 'ORD-DUP', updatedAt: '2025-03-12T00:00:00.000Z' }), 1);
-
-    // Both have updatedAt -> keep later
-    const dedupBoth = deduplicateOrders([orderA1, orderA2]);
-    expect(dedupBoth).toHaveLength(1);
-    expect(dedupBoth[0].updatedAt).toBe(Date.parse('2025-03-12T00:00:00.000Z'));
-
-    // Only one has updatedAt -> keep that one
-    const orderB1 = normalizeOrder(createMockRaw({ id: 'ORD-DUP2', updatedAt: null }), 0);
-    const orderB2 = normalizeOrder(createMockRaw({ id: 'ORD-DUP2', updatedAt: '2025-03-11T00:00:00.000Z' }), 1);
-    const dedupOne = deduplicateOrders([orderB1, orderB2]);
-    expect(dedupOne).toHaveLength(1);
-    expect(dedupOne[0].updatedAt).toBe(Date.parse('2025-03-11T00:00:00.000Z'));
-
-    // Neither has updatedAt -> keep the one appearing later in file
-    const orderC1 = normalizeOrder(createMockRaw({ id: 'ORD-DUP3', updatedAt: null, customerName: 'First' }), 0);
-    const orderC2 = normalizeOrder(createMockRaw({ id: 'ORD-DUP3', updatedAt: null, customerName: 'Second' }), 5);
-    const dedupNeither = deduplicateOrders([orderC1, orderC2]);
-    expect(dedupNeither).toHaveLength(1);
-    expect(dedupNeither[0].customerName).toBe('Second');
-  });
-
-  it('Rule 8: Treats missing priority as null and labels it as None', () => {
+  it('data-notes #8: Treats missing priority as null and labels it as None', () => {
     const missing = normalizeOrder(createMockRaw({ priority: undefined }));
     const nullPriority = normalizeOrder(createMockRaw({ priority: null }));
     const p1 = normalizeOrder(createMockRaw({ priority: 1 }));
@@ -125,15 +106,15 @@ describe('Data Normalization & Sanitization (10 Schema Rules)', () => {
     expect(p1.priorityLabel).toBe('1');
   });
 
-  it('Rule 9: Sanitizes HTML tags from notes safely', () => {
-    const rawWithHtml = '<b>URGENT</b>: Deliver before 5pm <script>alert(1)</script>';
-    const sanitized = sanitizeNotes(rawWithHtml);
-    expect(sanitized).toBe('URGENT: Deliver before 5pm alert(1)');
-    expect(sanitized).not.toContain('<script>');
-    expect(sanitized).not.toContain('<b>');
+  it('data-notes #9: Keeps notes exactly as written, including HTML-like text', () => {
+    const text = '<b>URGENT</b>: Deliver before 5pm <script>alert(1)</script>';
+    expect(normalizeOrder(createMockRaw({ notes: `  ${text} ` })).notes).toBe(text);
+    expect(normalizeOrder(createMockRaw({ notes: 'price < 500 > 100' })).notes).toBe('price < 500 > 100');
+    expect(normalizeOrder(createMockRaw({ notes: null })).notes).toBe('');
+    expect(normalizeOrder(createMockRaw({ notes: undefined })).notes).toBe('');
   });
 
-  it('Rule 10: Trims trailing spaces from currency', () => {
+  it('data-notes #10: Trims trailing spaces from currency', () => {
     const trailingCurrency = normalizeOrder(createMockRaw({ currency: 'INR ' }));
     expect(trailingCurrency.currency).toBe('INR');
   });

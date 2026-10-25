@@ -1,85 +1,35 @@
 /// <reference lib="webworker" />
+// Loads orders.json, cleans it and removes duplicates here instead of on the
+// main thread, so the page stays responsive while 17 MB is processed.
 import type { NormalizedOrder, RawOrder } from '../types/order';
-import type { WorkerRequest, WorkerResponse } from '../types/worker';
+import type { WorkerRequest, WorkerResponse, WorkerStage } from '../types/worker';
 import { deduplicateOrders } from '../utils/deduplicate';
 import { normalizeOrder } from '../utils/normalize';
 
 declare const self: DedicatedWorkerGlobalScope;
 
-function sendResponse(msg: WorkerResponse) {
-  self.postMessage(msg);
+const post = (message: WorkerResponse) => self.postMessage(message);
+const reportProgress = (stage: WorkerStage, message: string) => post({ type: 'PROGRESS', payload: { stage, message } });
+
+async function loadOrders(url: string): Promise<NormalizedOrder[]> {
+  reportProgress('downloading', 'Downloading orders…');
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Could not load the orders (HTTP ${response.status})`);
+
+  reportProgress('parsing', 'Reading the file…');
+  const rawOrders: RawOrder[] = await response.json();
+
+  reportProgress('normalizing', `Cleaning up ${rawOrders.length.toLocaleString()} orders…`);
+  const cleaned = rawOrders.map((order, index) => normalizeOrder(order, index));
+
+  reportProgress('deduplicating', 'Removing duplicate orders…');
+  return deduplicateOrders(cleaned);
 }
 
 self.onmessage = async (e: MessageEvent<WorkerRequest>) => {
-  const { type, payload } = e.data;
-
-  if (type === 'FETCH_AND_NORMALIZE') {
-    try {
-      // 1. Downloading
-      sendResponse({
-        type: 'PROGRESS',
-        payload: {
-          stage: 'downloading',
-          message: 'Downloading orders.json (17 MB)...',
-        },
-      });
-
-      const response = await fetch(payload.url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch orders data: HTTP ${response.status} ${response.statusText}`);
-      }
-
-      // 2. Parsing JSON off main thread
-      sendResponse({
-        type: 'PROGRESS',
-        payload: {
-          stage: 'parsing',
-          message: 'Parsing JSON records in Web Worker...',
-        },
-      });
-
-      const rawOrders: RawOrder[] = await response.json();
-
-      // 3. Normalizing all 10 schema rules
-      sendResponse({
-        type: 'PROGRESS',
-        payload: {
-          stage: 'normalizing',
-          message: `Normalizing ${rawOrders.length.toLocaleString()} records across schema versions...`,
-        },
-      });
-
-      const normalized: NormalizedOrder[] = new Array(rawOrders.length);
-      for (let i = 0; i < rawOrders.length; i++) {
-        normalized[i] = normalizeOrder(rawOrders[i], i);
-      }
-
-      // 4. Deduplicating based on Rule #7
-      sendResponse({
-        type: 'PROGRESS',
-        payload: {
-          stage: 'deduplicating',
-          message: 'Deduplicating duplicate IDs via timestamp priority...',
-        },
-      });
-
-      const deduplicated = deduplicateOrders(normalized);
-
-      // 5. Complete
-      sendResponse({
-        type: 'SUCCESS',
-        payload: {
-          orders: deduplicated,
-          totalCount: deduplicated.length,
-        },
-      });
-    } catch (err) {
-      sendResponse({
-        type: 'ERROR',
-        payload: {
-          message: err instanceof Error ? err.message : String(err),
-        },
-      });
-    }
+  try {
+    post({ type: 'SUCCESS', payload: { orders: await loadOrders(e.data.url) } });
+  } catch (err) {
+    post({ type: 'ERROR', payload: { message: err instanceof Error ? err.message : String(err) } });
   }
 };
