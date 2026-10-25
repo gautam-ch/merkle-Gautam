@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { NormalizedOrder } from '../types/order';
-import { sortOrders } from './sort';
+import { nextSort, sortOrders } from './sort';
 
 describe('sortOrders utility', () => {
   const mockOrders: NormalizedOrder[] = [
@@ -94,5 +94,23 @@ describe('sortOrders utility', () => {
 
     const desc = sortOrders(mockOrders, { field: 'updatedAt', direction: 'desc' });
     expect(desc[2].updatedAt).toBeNull();
+  });
+
+  it('places missing priority (None) at the bottom regardless of sort direction', () => {
+    const asc = sortOrders(mockOrders, { field: 'priority', direction: 'asc' });
+    expect(asc.map((o) => o.priority)).toEqual([1, 2, null]);
+
+    const desc = sortOrders(mockOrders, { field: 'priority', direction: 'desc' });
+    expect(desc.map((o) => o.priority)).toEqual([2, 1, null]);
+  });
+
+  it('cycles ascending, descending, unsorted when a header is clicked', () => {
+    const none = { field: null, direction: null } as const;
+    const asc = nextSort(none, 'amount');
+    expect(asc).toEqual({ field: 'amount', direction: 'asc' });
+    const desc = nextSort(asc, 'amount');
+    expect(desc).toEqual({ field: 'amount', direction: 'desc' });
+    expect(nextSort(desc, 'amount')).toEqual(none);
+    expect(nextSort(desc, 'status')).toEqual({ field: 'status', direction: 'asc' });
   });
 });

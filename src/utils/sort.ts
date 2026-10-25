@@ -1,51 +1,48 @@
 import type { SortState } from '../types/grid';
 import type { NormalizedOrder } from '../types/order';
 
+// Created once and reused. Building a new comparer on every comparison
+// (localeCompare with options) made text sorts take seconds on 50,000 rows.
+const textCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+// Columns where empty values (null) always go last, whatever the direction
+const EMPTY_LAST_FIELDS = new Set<keyof NormalizedOrder>(['updatedAt', 'priority']);
+
+function compareValues(a: unknown, b: unknown): number {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return textCollator.compare(String(a ?? ''), String(b ?? ''));
+}
+
 /**
- * Type-aware comparator for NormalizedOrder fields.
- * Handles:
- * - String comparison with localeCompare
- * - Numeric comparison for amount, itemCount, priority
- * - Timestamp comparison for createdAt and updatedAt
- * - Explicit rule #5: null updatedAt rows are always sorted to the end regardless of direction
+ * The sort after clicking a column header: ascending, then descending,
+ * then back to unsorted. Clicking a different column starts at ascending.
+ */
+export function nextSort(current: SortState, field: keyof NormalizedOrder): SortState {
+  if (current.field !== field) return { field, direction: 'asc' };
+  if (current.direction === 'asc') return { field, direction: 'desc' };
+  return { field: null, direction: null };
+}
+
+/**
+ * Returns a sorted copy of the orders. Amounts, counts and dates (stored as
+ * timestamps) sort as numbers; text sorts alphabetically. Empty Updated At
+ * and Priority values always go last (data-notes rule 5).
  */
 export function sortOrders(orders: NormalizedOrder[], sort: SortState): NormalizedOrder[] {
-  if (!sort.field || !sort.direction) {
-    return orders;
-  }
-
   const { field, direction } = sort;
-  const isAsc = direction === 'asc';
+  if (!field || !direction) return orders;
+
+  const sign = direction === 'asc' ? 1 : -1;
+  const emptyLast = EMPTY_LAST_FIELDS.has(field);
 
   return [...orders].sort((a, b) => {
     const valA = a[field];
     const valB = b[field];
 
-    // Special rule for updatedAt: nulls go to the bottom in both asc and desc
-    if (field === 'updatedAt') {
-      if (valA === null && valB === null) return 0;
-      if (valA === null) return 1;
-      if (valB === null) return -1;
+    if (emptyLast && (valA === null || valB === null)) {
+      if (valA === valB) return 0;
+      return valA === null ? 1 : -1;
     }
-
-    // Special rule for priority: nulls (None) placed at bottom
-    if (field === 'priority') {
-      if (valA === null && valB === null) return 0;
-      if (valA === null) return 1;
-      if (valB === null) return -1;
-    }
-
-    if (valA === valB) return 0;
-
-    // Numeric comparison
-    if (typeof valA === 'number' && typeof valB === 'number') {
-      return isAsc ? valA - valB : valB - valA;
-    }
-
-    // String comparison
-    const strA = String(valA ?? '');
-    const strB = String(valB ?? '');
-    const cmp = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
-    return isAsc ? cmp : -cmp;
+    return sign * compareValues(valA, valB);
   });
 }
