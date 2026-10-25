@@ -56,29 +56,37 @@ describe('Selection URL Serialization & Deserialization', () => {
     expect(decoded.has('ORD-0000013')).toBe(true);
   });
 
-  it('deserializes legacy comma-separated order IDs for backwards compatibility', () => {
-    const legacy = 'ORD-0000011,ORD-0000025,ORD-0000033';
-    const decoded = deserializeSelection(legacy);
-
-    expect(decoded.size).toBe(3);
-    expect(decoded.has('ORD-0000011')).toBe(true);
-    expect(decoded.has('ORD-0000025')).toBe(true);
-    expect(decoded.has('ORD-0000033')).toBe(true);
+  it('turns any run of two or more consecutive orders into a range', () => {
+    const selected = new Set([padOrderId(1), padOrderId(2), padOrderId(7)]);
+    expect(serializeSelection(selected)).toBe('1-2,7');
   });
 
-  it('handles special "all" selection keyword', () => {
+  it('ignores text that is not an order number or range', () => {
+    expect([...deserializeSelection('abc,12,x-3')]).toEqual(['ORD-0000012']);
+  });
+
+  it('caps absurdly large ranges', () => {
+    expect(deserializeSelection('1-999999999').size).toBe(50_000);
+  });
+
+  it('keeps every row of a large scattered selection', () => {
+    // Every other order: no ranges possible, so the string is long
+    const selected = new Set<string>();
+    for (let i = 1; i <= 2000; i += 2) {
+      selected.add(padOrderId(i));
+    }
+
+    const decoded = deserializeSelection(serializeSelection(selected));
+    expect(decoded.size).toBe(1000);
+    expect(decoded.has('ORD-0001999')).toBe(true);
+  });
+
+  it('encodes a selection of all 50,000 orders as one range', () => {
     const selected = new Set<string>();
     for (let i = 1; i <= 50000; i++) {
       selected.add(padOrderId(i));
     }
-
-    const encoded = serializeSelection(selected);
-    expect(encoded).toBe('all');
-
-    const decoded = deserializeSelection('all');
-    expect(decoded.size).toBe(50000);
-    expect(decoded.has('ORD-0000001')).toBe(true);
-    expect(decoded.has('ORD-0050000')).toBe(true);
+    expect(serializeSelection(selected)).toBe('1-50000');
   });
 
   it('safely handles empty or null values', () => {
