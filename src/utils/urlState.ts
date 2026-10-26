@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GRID_COLUMNS } from '../config/gridColumns';
+import { GRID_COLUMNS } from '../config/fields';
 import type { FilterState } from '../types/filter';
 import type { SortState } from '../types/grid';
 import type { NormalizedOrder } from '../types/order';

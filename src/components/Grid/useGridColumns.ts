@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import type { GridColumn } from '../../types/grid';
 import type { NormalizedOrder } from '../../types/order';
-import { GRID_COLUMNS } from '../../config/gridColumns';
-import { DEFAULT_COLUMN_WIDTHS, MIN_COLUMN_WIDTH, SELECT_COLUMN_WIDTH } from './columns';
+import { DEFAULT_COLUMN_WIDTHS, GRID_COLUMNS } from '../../config/fields';
+import { MIN_COLUMN_WIDTH, SELECT_COLUMN_WIDTH } from './columns';
 
 const FALLBACK_WIDTH = 140;
 

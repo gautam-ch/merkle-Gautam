@@ -1,12 +1,10 @@
+import { EMPTY_LAST_FIELDS } from '../config/fields';
 import type { SortState } from '../types/grid';
 import type { NormalizedOrder } from '../types/order';
 
 // Created once and reused. Building a new comparer on every comparison
 // (localeCompare with options) made text sorts take seconds on 50,000 rows.
 const textCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-
-// Columns where empty values (null) always go last, whatever the direction
-const EMPTY_LAST_FIELDS = new Set<keyof NormalizedOrder>(['updatedAt', 'priority']);
 
 function compareValues(a: unknown, b: unknown): number {
   if (typeof a === 'number' && typeof b === 'number') return a - b;

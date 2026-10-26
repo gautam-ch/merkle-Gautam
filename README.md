@@ -66,5 +66,6 @@ No router, state or date library. URL sync uses `window.history`, state uses Rea
 
 ## Known issues
 
+- **Slow sorting in dev mode:** sorting a text column takes about 2 seconds with `pnpm dev`, because React's development build logs every render. In the production build (`pnpm build` then `pnpm preview`) it takes about 0.2 seconds.
 - **Private browsing:** if IndexedDB is blocked, there is no cache and the file is downloaded on every visit.
 - **Very fast scrolling** can show empty rows for a moment before new rows are drawn.

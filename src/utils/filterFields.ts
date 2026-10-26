@@ -1,3 +1,4 @@
+import { FIELDS } from '../config/fields';
 import type { FieldConfig } from '../types/filter';
 import type { NormalizedOrder } from '../types/order';
 
@@ -64,6 +65,13 @@ const ENUM_OPERATORS: FieldConfig['operators'] = [
   { label: 'is not one of', value: 'not_in' },
 ];
 
+const OPERATORS: Record<FieldConfig['type'], FieldConfig['operators']> = {
+  text: TEXT_OPERATORS,
+  number: NUMBER_OPERATORS,
+  date: DATE_OPERATORS,
+  enum: ENUM_OPERATORS,
+};
+
 /**
  * Every field the filter builder offers, with its input type and operators.
  * Fixed-value fields get their options from the orders when given.
@@ -71,21 +79,16 @@ const ENUM_OPERATORS: FieldConfig['operators'] = [
 export function getFieldConfigs(orders?: NormalizedOrder[]): FieldConfig[] {
   const options = orders && orders.length > 0 ? extractEnumOptions(orders) : DEFAULT_ENUM_OPTIONS;
 
-  return [
-    { id: 'id', label: 'Order ID', type: 'text', operators: TEXT_OPERATORS },
-    { id: 'customerName', label: 'Customer Name', type: 'text', operators: TEXT_OPERATORS },
-    { id: 'customerEmail', label: 'Customer Email', type: 'text', operators: TEXT_OPERATORS },
-    { id: 'status', label: 'Status', type: 'enum', operators: ENUM_OPERATORS, options: options.status },
-    { id: 'amount', label: 'Amount (₹)', type: 'number', operators: NUMBER_OPERATORS },
-    { id: 'createdAt', label: 'Created Date', type: 'date', operators: DATE_OPERATORS },
-    { id: 'updatedAt', label: 'Updated Date', type: 'date', operators: DATE_OPERATORS },
-    { id: 'region', label: 'Region', type: 'enum', operators: ENUM_OPERATORS, options: options.region },
-    { id: 'channel', label: 'Channel', type: 'enum', operators: ENUM_OPERATORS, options: options.channel },
-    { id: 'paymentMethod', label: 'Payment Method', type: 'enum', operators: ENUM_OPERATORS, options: options.paymentMethod },
-    { id: 'priorityLabel', label: 'Priority', type: 'enum', operators: ENUM_OPERATORS, options: options.priorityLabel },
-    { id: 'itemCount', label: 'Item Count', type: 'number', operators: NUMBER_OPERATORS },
-    { id: 'notes', label: 'Notes', type: 'text', operators: TEXT_OPERATORS },
-  ];
+  return FIELDS.map((field) => {
+    const id = field.filterId ?? field.id;
+    return {
+      id,
+      label: field.filterLabel ?? field.header,
+      type: field.type,
+      operators: OPERATORS[field.type],
+      ...(field.type === 'enum' && { options: options[id as keyof EnumOptions] }),
+    };
+  });
 }
 
 // Field list before any orders are loaded; also what a URL filter is checked against
