@@ -15,16 +15,20 @@ const GRID_KEYS = new Set([
 
 const TEXT_FIELDS = new Set(['input', 'textarea', 'select']);
 
-// Keys belong to the page when the user is typing, or is on a button or link
-// outside the grid (so Enter and Space still press it).
-function shouldGridHandle(container: HTMLElement | null): boolean {
+const PRESS_KEYS = new Set([' ', 'Enter']);
+
+// Keys belong to the page when the user is typing. On a button or link, Enter and
+// Space press it (a header's sort or pin button as much as the toolbar); inside the
+// grid the arrow keys still move the focused cell.
+function shouldGridHandle(key: string, container: HTMLElement | null): boolean {
   const active = document.activeElement;
   const tag = active?.tagName.toLowerCase() ?? '';
   if (TEXT_FIELDS.has(tag)) return false;
 
   const isInteractive =
     tag === 'button' || tag === 'a' || active?.getAttribute('role') === 'button' || active?.getAttribute('contenteditable') === 'true';
-  return !isInteractive || container?.contains(active) === true;
+  if (!isInteractive) return true;
+  return container?.contains(active) === true && !PRESS_KEYS.has(key);
 }
 
 /**
@@ -51,7 +55,7 @@ export function useGridKeyboard(
     if (!enabled) return;
 
     const listener = (e: KeyboardEvent) => {
-      if (GRID_KEYS.has(e.key) && shouldGridHandle(containerRef.current)) handler.current(e);
+      if (GRID_KEYS.has(e.key) && shouldGridHandle(e.key, containerRef.current)) handler.current(e);
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);

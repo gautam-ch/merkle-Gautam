@@ -55,19 +55,22 @@ export const ColumnHeader: React.FC<ColumnHeaderProps> = ({
       style={{ width: column.width, left: isPinned ? SELECT_COLUMN_WIDTH : undefined }}
     >
       <div className="flex items-center justify-between gap-1 w-full">
-        <div
+        <button
+          type="button"
           onClick={onSort}
-          className={`flex flex-1 items-center gap-1.5 cursor-pointer hover:text-slate-950 truncate pl-4 ${alignment}`}
+          title={`Sort by ${column.header}`}
+          className={`flex flex-1 items-center gap-1.5 cursor-pointer hover:text-slate-950 truncate pl-4 rounded focus-visible:outline-2 focus-visible:outline-blue-600 ${alignment}`}
         >
           <span className="truncate">{column.header}</span>
           <span className="shrink-0 text-slate-400">
             <SortIcon sort={sort} isSorted={isSorted} />
           </span>
-        </div>
+        </button>
 
         <button
           onClick={onPin}
           title={isPinned ? 'Unpin column' : 'Pin column to left'}
+          aria-label={isPinned ? `Unpin ${column.header}` : `Pin ${column.header}`}
           className={`rounded p-1 hover:bg-slate-200 transition shrink-0 ${
             isPinned ? 'text-blue-600' : 'text-slate-400 hover:text-slate-700'
           }`}

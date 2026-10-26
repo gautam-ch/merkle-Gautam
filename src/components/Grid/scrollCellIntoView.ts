@@ -1,10 +1,8 @@
 import type { CellPosition, GridColumn } from '../../types/grid';
+import { scrollTopToShowRow } from '../../utils/virtualScroll';
 import { ROW_HEIGHT, SELECT_COLUMN_WIDTH } from './columns';
 
-// Space kept between the focused row and the sticky header / bottom edge
-const TOP_MARGIN = 50;
-const BOTTOM_MARGIN = 20;
-const RIGHT_MARGIN = 30;
+const RIGHT_MARGIN = 30; // space kept between the focused cell and the right edge
 
 interface Layout {
   columns: GridColumn[];
@@ -19,12 +17,9 @@ interface Layout {
 export function scrollCellIntoView(container: HTMLElement, cell: CellPosition, layout: Layout) {
   const { columns, hasPinnedColumn, viewportHeight } = layout;
 
-  const rowTop = cell.rowIndex * ROW_HEIGHT;
-  if (rowTop < container.scrollTop + TOP_MARGIN) {
-    container.scrollTop = Math.max(0, rowTop - TOP_MARGIN);
-  } else if (rowTop + ROW_HEIGHT > container.scrollTop + viewportHeight - BOTTOM_MARGIN) {
-    container.scrollTop = rowTop + ROW_HEIGHT - viewportHeight + 2 * BOTTOM_MARGIN;
-  }
+  // The first role="row" is the sticky header
+  const headerHeight = container.querySelector<HTMLElement>('[role="row"]')?.offsetHeight ?? 0;
+  container.scrollTop = scrollTopToShowRow(cell.rowIndex, container.scrollTop, viewportHeight, headerHeight, ROW_HEIGHT);
 
   const isSticky = cell.colIndex === 0 || (hasPinnedColumn && cell.colIndex === 1);
   if (isSticky) return;
