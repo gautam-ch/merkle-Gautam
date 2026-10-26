@@ -116,3 +116,27 @@ describe('Header quick filters', () => {
     expect(applyColumnFilters([sampleOrder], { priority: '1' })).toHaveLength(1);
   });
 });
+
+describe('Rules with no value yet', () => {
+  const rule = (id: string, field: FilterCondition['field'], operator: FilterCondition['operator'], value: FilterCondition['value']): FilterCondition => ({ id, field, operator, value });
+  const orders = [sampleOrder, { ...sampleOrder, id: 'ORD-000101', status: 'pending' as const }];
+
+  it('does not widen an OR group when an empty rule is added next to a filled-in one', () => {
+    const filter: FilterState = {
+      groups: [{ id: 'g', conditions: [rule('a', 'status', 'in', ['delivered']), rule('b', 'region', 'in', [])] }],
+    };
+    expect(applyFilter(orders, filter).map((o) => o.id)).toEqual(['ORD-000100']);
+  });
+
+  it('ignores empty and whitespace-only text rules the same way', () => {
+    const filter: FilterState = {
+      groups: [{ id: 'g', conditions: [rule('a', 'status', 'in', ['delivered']), rule('b', 'customerName', 'contains', '  ')] }],
+    };
+    expect(applyFilter(orders, filter)).toHaveLength(1);
+  });
+
+  it('lets a group with only empty rules match everything', () => {
+    const filter: FilterState = { groups: [{ id: 'g', conditions: [rule('a', 'status', 'in', [])] }] };
+    expect(applyFilter(orders, filter)).toHaveLength(2);
+  });
+});

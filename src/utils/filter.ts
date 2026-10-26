@@ -1,6 +1,7 @@
 import { filterIdsOfType } from '../config/fields';
 import type { FilterCondition, FilterGroup, FilterState } from '../types/filter';
 import type { NormalizedOrder } from '../types/order';
+import { isConditionEmpty } from './filterEdit';
 
 type Operator = FilterCondition['operator'];
 type Value = FilterCondition['value'];
@@ -100,9 +101,14 @@ export function evaluateCondition(order: NormalizedOrder, { field, operator, val
   return matchesText(raw, operator, value);
 }
 
-/** A group matches when any of its rules match (OR). */
+/**
+ * A group matches when any of its rules match (OR). Rules with no value yet are
+ * skipped, so a half-built rule never widens the group; a group with no filled-in
+ * rule doesn't filter at all.
+ */
 function evaluateGroup(order: NormalizedOrder, group: FilterGroup): boolean {
-  return group.conditions.length === 0 || group.conditions.some((rule) => evaluateCondition(order, rule));
+  const filledIn = group.conditions.filter((rule) => !isConditionEmpty(rule));
+  return filledIn.length === 0 || filledIn.some((rule) => evaluateCondition(order, rule));
 }
 
 /** The orders that match the filter: every group must match (AND). */

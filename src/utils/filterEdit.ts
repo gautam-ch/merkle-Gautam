@@ -12,7 +12,8 @@ const newGroup = (): FilterGroup => ({ id: newId('grp'), conditions: [newConditi
  */
 export function isConditionEmpty({ value }: FilterCondition): boolean {
   if (Array.isArray(value)) return value.every((v) => v === '');
-  return value === '' || value === null || value === undefined;
+  if (typeof value === 'string') return value.trim() === '';
+  return value === null || value === undefined;
 }
 
 /** How many conditions in the filter have a value. */
