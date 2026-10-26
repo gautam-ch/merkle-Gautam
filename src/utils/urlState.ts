@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { GRID_COLUMNS } from '../config/gridColumns';
 import type { FilterState } from '../types/filter';
 import type { SortState } from '../types/grid';
@@ -30,14 +31,16 @@ const isColumnId = (value: string | null): value is keyof NormalizedOrder =>
   value !== null && COLUMN_IDS.has(value);
 
 // Header quick filters are stored as JSON: {"createdAt":"05/"}
+const columnFiltersSchema = z.record(
+  z.string().refine((key) => COLUMN_IDS.has(key)),
+  z.string()
+);
+
 function parseColumnFilters(q: string | null): Record<string, string> | null {
   if (q === null) return {};
   try {
-    const parsed: unknown = JSON.parse(q);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
-    const entries = Object.entries(parsed);
-    const isValid = entries.every(([key, value]) => COLUMN_IDS.has(key) && typeof value === 'string');
-    return isValid ? Object.fromEntries(entries) : null;
+    const result = columnFiltersSchema.safeParse(JSON.parse(q));
+    return result.success ? result.data : null;
   } catch {
     return null;
   }

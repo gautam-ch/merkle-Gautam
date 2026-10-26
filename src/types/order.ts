@@ -1,24 +1,4 @@
 
-export interface RawOrder {
-  id: string;
-  schemaVersion: 1 | 2;
-  customerName?: string;
-  customer_name?: string;
-  customerEmail: string;
-  status: string;
-  amount: number | string;
-  currency: string;
-  createdAt: string | number;
-  updatedAt?: string | null;
-  region: string;
-  channel: string;
-  priority?: number | null;
-  paymentMethod: string;
-  itemCount: number;
-  notes?: string | null;
-  [key: string]: unknown;
-}
-
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 export type OrderRegion = 'NORTH' | 'SOUTH' | 'EAST' | 'WEST' | 'CENTRAL' | 'NORTHEAST';

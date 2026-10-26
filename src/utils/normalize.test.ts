@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { RawOrder } from '../types/order';
 import { normalizeOrder, parseDateToTimestamp } from './normalize';
+import type { RawOrder } from './rawOrder';
 
 // The numbers refer to the problem list in data-notes.md
 describe('Cleaning the data', () => {

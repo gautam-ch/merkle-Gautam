@@ -21,7 +21,7 @@ export function countActiveConditions(filter: FilterState): number {
 }
 
 /** The starting value for a rule of this field type and operator. */
-export function defaultConditionValue(type: FieldConfig['type'], operator: FilterCondition['operator']): FilterCondition['value'] {
+function defaultConditionValue(type: FieldConfig['type'], operator: FilterCondition['operator']): FilterCondition['value'] {
   if (type === 'enum') return [];
   return operator === 'between' ? ['', ''] : '';
 }

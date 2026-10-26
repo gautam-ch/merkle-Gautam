@@ -33,8 +33,12 @@ pnpm dev
 Runtime dependencies added on top of the Vite React template:
 
 - `lucide-react`: icons (sort arrows, pin, filter, export buttons).
-- `radix-ui`: accessible side panel for the order details.
+- `@radix-ui/react-dialog`: accessible side panel for the order details.
 - `clsx`: joins conditional class names.
+- `zod`: checks each record in `orders.json` and the filter read from the URL, so bad input is skipped or falls back to the default view instead of crashing.
+- `idb`: a small wrapper that makes IndexedDB (the saved copy of the orders) simple to use.
+
+Build-time only (not shipped to the browser): Tailwind CSS for styling, Vitest for tests.
 
 No router, state or date library. URL sync uses `window.history`, state uses React hooks, and dates are parsed by my own code.
 
@@ -43,6 +47,7 @@ No router, state or date library. URL sync uses `window.history`, state uses Rea
 - `orders.json` lives in `public/` and is downloaded with `fetch` when the app opens. It is not bundled into the JavaScript.
 - **Why:** a 17 MB file inside the bundle would make the first page load slow.
 - Downloading, parsing and cleaning run in a **Web Worker**, so the page doesn't freeze. A progress screen shows while it loads.
+- Each record is first checked with a `zod` schema (`src/utils/rawOrder.ts`). A record that can't be read (for example, no ID) is skipped and a warning is logged. This file has none.
 - All data fixes from `data-notes.md` happen in one place (`src/utils/normalize.ts` and `src/utils/deduplicate.ts`), before the data reaches the grid or the filter.
 - The cleaned data is saved in **IndexedDB**, so the next visit loads without downloading again.
 

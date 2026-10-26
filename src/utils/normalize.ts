@@ -5,8 +5,8 @@ import type {
   OrderStatus,
   PaymentMethod,
   PriorityLevel,
-  RawOrder,
 } from '../types/order';
+import type { RawOrder } from './rawOrder';
 
 // Built once: creating a formatter for each of the 50,000 orders is slow
 const rupees = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' });

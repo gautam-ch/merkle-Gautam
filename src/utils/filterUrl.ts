@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { FilterState } from '../types/filter';
 import { FIELD_CONFIGS } from './filterFields';
 
@@ -14,33 +15,30 @@ export function deserializeFilter(encoded: string | null): FilterState | null {
   if (!encoded) return null;
   try {
     const parsed: unknown = JSON.parse(decodeURIComponent(atob(encoded)));
-    return isValidFilterState(parsed) ? parsed : null;
+    const result = filterSchema.safeParse(parsed);
+    return result.success ? (result.data as FilterState) : null;
   } catch {
     return null;
   }
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
-
-const isPrimitive = (value: unknown) => typeof value === 'string' || typeof value === 'number';
+const valueSchema = z.union([z.string(), z.number()]);
 
 // The field and operator must be ones the builder offers. Values only need to be
 // text, numbers or a list of them: while switching operators the builder can hold
 // a single value for "between", and matching copes with that.
-function isValidCondition(value: unknown): boolean {
-  if (!isRecord(value) || typeof value.id !== 'string') return false;
-  const field = FIELD_CONFIGS.find((f) => f.id === value.field);
-  if (!field || !field.operators.some((op) => op.value === value.operator)) return false;
-  return Array.isArray(value.value) ? value.value.every(isPrimitive) : isPrimitive(value.value);
-}
+const conditionSchema = z
+  .object({
+    id: z.string(),
+    field: z.string(),
+    operator: z.string(),
+    value: z.union([valueSchema, z.array(valueSchema)]),
+  })
+  .refine((condition) => {
+    const field = FIELD_CONFIGS.find((f) => f.id === condition.field);
+    return !!field && field.operators.some((op) => op.value === condition.operator);
+  });
 
-function isValidFilterState(value: unknown): value is FilterState {
-  if (!isRecord(value) || !Array.isArray(value.groups)) return false;
-  return value.groups.every(
-    (group) =>
-      isRecord(group) &&
-      typeof group.id === 'string' &&
-      Array.isArray(group.conditions) &&
-      group.conditions.every(isValidCondition)
-  );
-}
+const filterSchema = z.object({
+  groups: z.array(z.object({ id: z.string(), conditions: z.array(conditionSchema) })),
+});

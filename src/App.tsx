@@ -14,7 +14,7 @@ import { useVisibleOrders } from './hooks/useVisibleOrders';
 import { countActiveConditions, removeCondition } from './utils/filterEdit';
 import { getFieldConfigs } from './utils/filterFields';
 
-export const App: React.FC = () => {
+const App: React.FC = () => {
   const { orders, loading, error, progress, reload } = useOrders('/orders.json');
   const { urlState, syncToUrl, urlError, dismissUrlError, fallBackToDefault } = useUrlState();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
