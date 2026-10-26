@@ -4,24 +4,27 @@ import { addRange, toggleId } from '../../utils/rowSelection';
 
 /**
  * Click, Shift+click and select-all behaviour for the grid rows.
- * Shift+click selects from the last clicked row to this one.
+ * Shift+click selects from the last clicked row to this one (if a filter hid that row, it acts as a plain click).
  */
 export function useRowSelection(
   orders: NormalizedOrder[],
   selectedIds: Set<string>,
   onSelectionChange: (ids: Set<string>) => void
 ) {
-  const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
+  // The anchor is an order, not a row position, so it survives sorting and filtering
+  const [anchorId, setAnchorId] = useState<string | null>(null);
 
   const selectRow = (rowIndex: number, shiftKey: boolean) => {
     const order = orders[rowIndex];
     if (!order) return;
 
-    if (shiftKey && anchorIndex !== null) {
+    const anchorIndex = shiftKey && anchorId !== null ? orders.findIndex((o) => o.id === anchorId) : -1;
+
+    if (anchorIndex !== -1) {
       onSelectionChange(addRange(selectedIds, orders, anchorIndex, rowIndex));
     } else {
       onSelectionChange(toggleId(selectedIds, order.id));
-      setAnchorIndex(rowIndex);
+      setAnchorId(order.id);
     }
   };
 
