@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { escapeCsv } from './export';
+import { sampleOrder } from '../test/sampleOrder';
+import { escapeCsv, ordersToCsv } from './export';
 
 describe('CSV escaping', () => {
   it('quotes plain values and doubles embedded quotes', () => {
@@ -18,5 +19,20 @@ describe('CSV escaping', () => {
 
   it('leaves values with a trigger character later in the text unchanged', () => {
     expect(escapeCsv('a=b')).toBe('"a=b"');
+  });
+});
+
+describe('CSV rows', () => {
+  it('leaves Updated At empty when the order has none', () => {
+    const noUpdate = { ...sampleOrder, updatedAt: null, updatedAtFormatted: '-' };
+    const [, row] = ordersToCsv([noUpdate]).split('\n');
+    expect(row).not.toContain('-"');
+    expect(row).toContain('"15/06/2025 12:00",""');
+  });
+
+  it('writes a header, then one line per order, after a BOM', () => {
+    const lines = ordersToCsv([sampleOrder, sampleOrder]).split('\n');
+    expect(lines).toHaveLength(3);
+    expect(lines[0].startsWith('\uFEFF"Order ID"') || lines[0].startsWith('\uFEFFOrder ID')).toBe(true);
   });
 });

@@ -8,45 +8,48 @@ export function exportOrders(orders: NormalizedOrder[], format: 'csv' | 'json'):
     const jsonStr = JSON.stringify(orders, null, 2);
     downloadFile(jsonStr, 'orders_export.json', 'application/json');
   } else {
-    // Generate CSV
-    const headers = [
-      'Order ID',
-      'Customer Name',
-      'Customer Email',
-      'Status',
-      'Amount (INR)',
-      'Created At',
-      'Updated At',
-      'Region',
-      'Channel',
-      'Priority',
-      'Payment Method',
-      'Items',
-      'Notes',
-    ];
-
-    const rows = orders.map((o) => [
-      escapeCsv(o.id),
-      escapeCsv(o.customerName),
-      escapeCsv(o.customerEmail),
-      escapeCsv(o.status),
-      o.amount.toFixed(2),
-      escapeCsv(o.createdAtFormatted),
-      escapeCsv(o.updatedAtFormatted),
-      escapeCsv(o.region),
-      escapeCsv(o.channel),
-      escapeCsv(o.priorityLabel),
-      escapeCsv(o.paymentMethod),
-      o.itemCount,
-      escapeCsv(o.notes),
-    ]);
-
-    // BOM so Excel on Windows reads the file as UTF-8 (₹, non-ASCII names)
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const csvContent = ordersToCsv(orders);
     downloadFile(csvContent, 'orders_export.csv', 'text/csv;charset=utf-8;');
   }
 
   return { count: orders.length };
+}
+
+const CSV_HEADERS = [
+  'Order ID',
+  'Customer Name',
+  'Customer Email',
+  'Status',
+  'Amount (INR)',
+  'Created At',
+  'Updated At',
+  'Region',
+  'Channel',
+  'Priority',
+  'Payment Method',
+  'Items',
+  'Notes',
+];
+
+/** The orders as CSV text, starting with a BOM so Excel on Windows reads it as UTF-8. */
+export function ordersToCsv(orders: NormalizedOrder[]): string {
+  const rows = orders.map((o) => [
+    escapeCsv(o.id),
+    escapeCsv(o.customerName),
+    escapeCsv(o.customerEmail),
+    escapeCsv(o.status),
+    o.amount.toFixed(2),
+    escapeCsv(o.createdAtFormatted),
+    escapeCsv(o.updatedAt === null ? '' : o.updatedAtFormatted), // empty, not the "-" shown on screen
+    escapeCsv(o.region),
+    escapeCsv(o.channel),
+    escapeCsv(o.priorityLabel),
+    escapeCsv(o.paymentMethod),
+    o.itemCount,
+    escapeCsv(o.notes),
+  ]);
+
+  return '\uFEFF' + [CSV_HEADERS.join(','), ...rows.map((r) => r.join(','))].join('\n');
 }
 
 /**
