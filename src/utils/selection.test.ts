@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   deserializeSelection,
+  isValidSelectionParam,
   padOrderId,
   parseOrderIdNumber,
   serializeSelection,
@@ -94,5 +95,46 @@ describe('Selection URL Serialization & Deserialization', () => {
     expect(deserializeSelection(null).size).toBe(0);
     expect(deserializeSelection('').size).toBe(0);
     expect(deserializeSelection('   ').size).toBe(0);
+  });
+
+  describe('scattered selections', () => {
+    const scattered = (count: number) => {
+      // every 7th order: no ranges, and a lot of rows
+      const selected = new Set<string>();
+      for (let i = 0; i < count; i++) selected.add(padOrderId(1 + ((i * 7) % 50_000)));
+      return selected;
+    };
+
+    it('stays short and keeps every row when 25,000 orders are scattered', () => {
+      const selected = new Set<string>();
+      for (let i = 1; i <= 50_000; i++) if (i % 2 === 0 || i % 3 === 0) selected.add(padOrderId(i));
+
+      const encoded = serializeSelection(selected);
+      expect(encoded.startsWith('~')).toBe(true);
+      expect(encoded.length).toBeLessThan(8_500);
+      expect(isValidSelectionParam(encoded)).toBe(true);
+
+      const decoded = deserializeSelection(encoded);
+      expect(decoded.size).toBe(selected.size);
+      for (const id of selected) expect(decoded.has(id)).toBe(true);
+    });
+
+    it('uses ranges while they are shorter', () => {
+      expect(serializeSelection(scattered(3)).startsWith('~')).toBe(false);
+    });
+
+    it('survives the URL round trip', () => {
+      const selected = scattered(7000);
+      const query = new URLSearchParams({ sel: serializeSelection(selected) }).toString();
+      const decoded = deserializeSelection(new URLSearchParams(query).get('sel'));
+      expect(decoded).toEqual(selected);
+    });
+
+    it('rejects broken or oversized bitset text', () => {
+      expect(isValidSelectionParam('~a')).toBe(false);
+      expect(isValidSelectionParam('~ab$')).toBe(false);
+      expect(isValidSelectionParam('~' + 'A'.repeat(20_000))).toBe(false);
+      expect(deserializeSelection('~a').size).toBe(0);
+    });
   });
 });
