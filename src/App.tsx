@@ -84,7 +84,7 @@ const App: React.FC = () => {
             onRemoveCondition={(groupId, conditionId) =>
               syncToUrl({ filter: removeCondition(filter, groupId, conditionId) })
             }
-            onClearAll={resetView}
+            onClearAll={clearFilters}
             fieldConfigs={fieldConfigs}
           />
 
