@@ -1,83 +1,65 @@
 # Orders Explorer
 
-An internal tool for browsing ~50,000 order records with a custom virtualized grid and filter builder.
+One screen for browsing ~50,000 orders: a data grid and a filter builder, both built from scratch (no grid, virtualization or query-builder library).
 
 ## How to run
 
+Needs **Node 24** (see `.nvmrc`) and **pnpm**.
+
 ```bash
-# Node 24 required
+git clone https://github.com/gautam-ch/merkle-Gautam.git
+cd merkle-Gautam
 pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
-
-To build for production:
-
-```bash
-pnpm build
-pnpm preview
-```
+- Open [http://localhost:5173](http://localhost:5173).
+- Production build: `pnpm build` then `pnpm preview`.
+- To judge speed, use the production build. The dev server is slower because React adds extra checks in development.
+- Tests: `pnpm test`. Lint: `pnpm lint`.
 
 ## Screenshots
 
-> **Main screen — with data**
+**Main screen with data**
 
-![Main screen](design/screenshot-main.png)
+![Main screen](screenshots/orders-explorer.png)
 
-> **Empty state — filter matches zero rows**
+**Empty state (filter matches zero rows)**
 
-![Empty state](design/screenshot-empty.png)
-
----
+![Empty state](screenshots/orders-explorer-no-data.png)
 
 ## Dependencies
 
-Every runtime dependency added beyond the Vite React template:
+Runtime dependencies added on top of the Vite React template:
 
-| Package | Why |
-|---------|-----|
-| `lucide-react` | Lightweight icon pack for sorting indicators, pin toggles, filter controls, and action buttons |
-| `clsx` | Utility for constructing conditional className strings |
-| `class-variance-authority` | Type-safe styling variants for UI components (badges, buttons, sheet) |
-| `radix-ui` | Accessible headless primitives for the slide-in order details drawer |
+- `lucide-react`: icons (sort arrows, pin, filter, export buttons).
+- `radix-ui`: accessible side panel for the order details.
+- `clsx`: joins conditional class names.
 
-> **Zero Phantom Dependencies:** URL synchronization is implemented using native `window.history` and `URLSearchParams` (`useUrlState.ts`). Date parsing across all 4 formats uses a custom zero-dependency parser (`normalize.ts`). State management is handled with standard React hooks (`useState`, `useMemo`, `useCallback`). No table, grid, virtualization, or query-builder library was used.
-
----
+No router, state or date library. URL sync uses `window.history`, state uses React hooks, and dates are parsed by my own code.
 
 ## Data loading
 
-`orders.json` (~17 MB) lives in `public/` and is loaded with `fetch('/orders.json')` at runtime — not bundled by Vite.
+- `orders.json` lives in `public/` and is downloaded with `fetch` when the app opens. It is not bundled into the JavaScript.
+- **Why:** a 17 MB file inside the bundle would make the first page load slow.
+- Downloading, parsing and cleaning run in a **Web Worker**, so the page doesn't freeze. A progress screen shows while it loads.
+- All data fixes from `data-notes.md` happen in one place (`src/utils/normalize.ts` and `src/utils/deduplicate.ts`), before the data reaches the grid or the filter.
+- The cleaned data is saved in **IndexedDB**, so the next visit loads without downloading again.
 
-**Why:** Importing a 17 MB JSON as a static module forces Vite to bundle it into the JS chunk, which blocks the browser on parse before the app can even render. Serving from `public/` allows async fetch and browser caching on repeat visits.
+## The 200 rows question
 
-All parsing and normalization runs inside a **Web Worker** (`src/workers/data.worker.ts`). This keeps JSON.parse (which takes ~1–2 s for 17 MB) off the main thread so the UI stays responsive during load.
-
-After the worker posts back the normalized array, it is held once in React state (`useOrders`) and cached in IndexedDB. Filtering and sorting are derived with `useMemo` — the source array is never mutated.
-
----
-
-## The 200-rows question
-
-**Choice: export only the rows that are both selected AND currently visible after filtering.**
-
-If 200 rows are selected and a filter hides 180 of them, the export contains **20 rows**.
-
-**Why:** The filter is the user's intent. If they narrowed down the view, they almost certainly want to work with what they can see. Exporting hidden rows would be surprising and hard to predict. The selection count shown on screen always reflects the current filter, so it always matches the CSV exactly.
-
----
+- **Choice:** the export has **20 rows**: only the selected rows that are still visible after the filter.
+- **Why:** the filter shows what the user is working on right now. Exporting 180 hidden rows would be a surprise.
+- The screen shows **"20 of 200 selected"**, so the count always matches the export.
+- The 180 hidden rows stay selected. Remove the filter and they come back.
+- If no rows are selected, Export gives all rows that match the filter.
 
 ## Design changes
 
-1. **Integrated Filter Chips above Grid:** While the sidebar query builder acts as the primary rule builder, adding dynamic chips above the grid gives users instant visibility into all active conditions with 1-click removal.
-2. **In-Header Quick Filters:** Directly below each column header, quick search inputs were implemented to complement the sidebar query builder for rapid single-column filtering without modal interactions.
-3. **Slideout Detail Drawer:** Chosen over an inline expandable row to keep virtual scroll math strictly constant ($40\text{px}$ O(1) row height) without dynamic height recalculations.
-4. **IndexedDB Transparent Caching:** Added local persistence so subsequent app reloads are instant without re-downloading and re-parsing the 17 MB file.
-
----
+- **More features were added:** a collapsible filter sidebar, a pin button and sort arrow on each column, a checkbox column, a side panel for row details, and extra buttons (Reset View, JSON, Share).
+- **Filter groups can hold several rules** , and filter chips can be removed one by one. Rules inside a group are combined with OR, and groups with AND.
 
 ## Known issues
 
-1. **Private Browsing Mode:** IndexedDB caching gracefully degrades to in-memory Web Worker processing if storage quotas or third-party storage are restricted.
-2. **Very Rapid Trackpad Flinging:** When flicking the scroll wheel at extreme velocity across 50,000 rows, a microsecond frame delay can occur before the overscan buffer fills; mitigated by setting overscan to 5 rows and using CSS transforms.
+- **Private browsing:** if IndexedDB is blocked, there is no cache and the file is downloaded on every visit.
+- **Very fast scrolling** can show empty rows for a moment before new rows are drawn.
